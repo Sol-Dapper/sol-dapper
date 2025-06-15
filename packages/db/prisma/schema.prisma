@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  privyUserId   String   @unique
+  walletAddress String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Project {
+  id            String   @id @default(uuid())
+  description   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  prompts       Prompt[]
+  userId        String
+}
+
+model Prompt {
+  id        String @id @default(uuid())
+  content   String
+  type      PromptType
+  createdAt DateTime @default(now())
+  updatedAT DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id])
+  projectId String
+}
+
+enum PromptType {
+  USER
+  SYSTEM
+}
+

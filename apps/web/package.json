@@ -11,10 +11,19 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@privy-io/react-auth": "^2.14.2",
     "@repo/ui": "*",
+    "@tailwindcss/postcss": "^4.1.10",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "ethers": "^6.14.4",
+    "lucide-react": "^0.515.0",
     "next": "^15.3.0",
+    "postcss": "^8.5.5",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss": "^4.1.10"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
@@ -23,6 +32,7 @@
     "@types/react": "19.1.0",
     "@types/react-dom": "19.1.1",
     "eslint": "^9.28.0",
+    "tw-animate-css": "^1.3.4",
     "typescript": "5.8.2"
   }
 }
