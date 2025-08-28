@@ -10,7 +10,7 @@ datasource db {
 
 model User {
   id            String    @id @default(uuid())
-  email         String    @unique
+  email         String?    @unique
   privyUserId   String    @unique
   walletAddress String?
   createdAt     DateTime  @default(now())

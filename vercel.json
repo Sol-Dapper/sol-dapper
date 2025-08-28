@@ -1,0 +1,32 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "projects": [
+    {
+      "name": "sol-dapper-web",
+      "source": "apps/web",
+      "framework": "nextjs",
+      "buildCommand": "cd ../.. && bun run build --filter=web",
+      "devCommand": "cd ../.. && bun run dev --filter=web",
+      "installCommand": "bun install"
+    },
+    {
+      "name": "sol-dapper-backend",
+      "source": "apps/backend", 
+      "buildCommand": "cd ../.. && bun run build --filter=backend",
+      "devCommand": "cd ../.. && bun run dev --filter=backend",
+      "installCommand": "bun install"
+    }
+  ],
+  "functions": {
+    "apps/backend/index.ts": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://sol-dapper-backend.vercel.app/$1"
+    }
+  ]
+}

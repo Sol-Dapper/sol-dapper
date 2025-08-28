@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "buildCommand": "cd ../.. && bun run build --filter=backend",
+  "devCommand": "cd ../.. && bun run dev --filter=backend",
+  "installCommand": "bun install",
+  "functions": {
+    "index.ts": {
+      "runtime": "nodejs20.x"
+    }
+  }
+}

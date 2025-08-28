@@ -12,6 +12,35 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.post("/register", async (req, res) => {
+  try {
+    const { privyUserId, email, walletAddress } = req.body;
+
+    if (!privyUserId || !email) {
+      return res.status(400).json({ error: "Missing required fields: privyUserId and email" });
+    }
+
+    const user = await prismaClient.user.upsert({
+      where: { privyUserId },
+      update: { 
+        email,
+        walletAddress,
+        updatedAt: new Date()
+      },
+      create: {
+        privyUserId,
+        email,
+        walletAddress
+      }
+    });
+
+    res.json({ success: true, user: { id: user.id, email: user.email } });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "Failed to register user" });
+  }
+});
+
 app.post("/project", authMiddleware, async (req, res) => {
   const { prompt } = req.body;
   const privyUserId = req.privyUserId!;
