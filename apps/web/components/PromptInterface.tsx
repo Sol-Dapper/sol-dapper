@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Separator } from "./ui/separator";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "components/ui/select";
 import { Send, Loader2, AlertCircle } from "lucide-react";
 
 interface Project {
@@ -24,9 +25,19 @@ interface ProjectWithStatus extends Project {
   status?: ProjectStatus;
 }
 
+// Available OpenAI models
+const AVAILABLE_MODELS = [
+  { value: 'gpt-4o', label: 'GPT-4o (Latest)' },
+  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+  { value: 'gpt-4', label: 'GPT-4' },
+  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+] as const;
+
 export function PromptInterface(): JSX.Element {
   const { getAccessToken } = usePrivy();
   const [prompt, setPrompt] = useState<string>("");
+  const [selectedModel, setSelectedModel] = useState<string>("gpt-4o");
   const [projects, setProjects] = useState<ProjectWithStatus[]>([]);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [streamingResponse, setStreamingResponse] = useState<string>("");
@@ -92,10 +103,10 @@ export function PromptInterface(): JSX.Element {
         throw new Error("Failed to get authentication token");
       }
 
-      // Start streaming response simulation
-      setStreamingResponse("🚀 Starting project creation...\n\n");
+      // Step 1: Create the project
+      setStreamingResponse("🚀 Creating project...\n\n");
       
-      const response = await fetch('http://localhost:3001/project', {
+      const projectResponse = await fetch('http://localhost:3001/project', {
         method: 'POST',
         headers: {
           'Authorization': token,
@@ -104,39 +115,92 @@ export function PromptInterface(): JSX.Element {
         body: JSON.stringify({ prompt }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || errorData.message || response.statusText;
+      if (!projectResponse.ok) {
+        const errorData = await projectResponse.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.message || projectResponse.statusText;
         throw new Error(`Failed to create project: ${errorMessage}`);
       }
 
-      const result = await response.json();
+      const projectResult = await projectResponse.json();
+      const projectId = projectResult.project;
       
-      // Update streaming response
+      // Update streaming response and project status
       setStreamingResponse(prev => prev + "✅ Project created successfully!\n\n");
-      setStreamingResponse(prev => prev + `📝 Project ID: ${result.project}\n`);
+      setStreamingResponse(prev => prev + `📝 Project ID: ${projectId}\n`);
       setStreamingResponse(prev => prev + `📋 Description: ${prompt.split('\n')[0]}\n\n`);
-      setStreamingResponse(prev => prev + "🔄 Analyzing requirements...\n");
-      setStreamingResponse(prev => prev + "🏗️  Setting up Solana project structure...\n");
-      setStreamingResponse(prev => prev + "⚡ Ready for development!\n");
-
-      // Update the temporary project with success status
+      setStreamingResponse(prev => prev + "🤖 Generating AI response...\n\n");
+      
+      // Update the temporary project with the real project ID
       setProjects(prev => 
         prev.map(p => 
           p.id === tempProject.id 
             ? { 
                 ...p, 
-                id: result.project,
-                status: 'completed' as ProjectStatus
+                id: projectId,
+                status: 'generating' as ProjectStatus
               }
             : p
         )
       );
 
+      // Step 2: Send the prompt to chat endpoint for AI response
+      const chatResponse = await fetch('http://localhost:3001/chat', {
+        method: 'POST',
+        headers: {
+          'Authorization': token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          prompt,
+          projectId,
+          model: selectedModel
+        }),
+      });
+
+      if (!chatResponse.ok) {
+        const errorData = await chatResponse.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.message || chatResponse.statusText;
+        throw new Error(`Failed to get AI response: ${errorMessage}`);
+      }
+
+      // Handle streaming response
+      const reader = chatResponse.body?.getReader();
+      const decoder = new TextDecoder();
+      
+      if (!reader) {
+        throw new Error('No response stream available');
+      }
+
+      setStreamingResponse(''); // Clear any previous content
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            break;
+          }
+          
+          const chunk = decoder.decode(value, { stream: true });
+          setStreamingResponse(prev => prev + chunk);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+      // Update the project with completed status
+      setProjects(prev => 
+        prev.map(p => 
+          p.id === projectId 
+            ? { ...p, status: 'completed' as ProjectStatus }
+            : p
+        )
+      );
+
     } catch (err) {
-      console.error('Error creating project:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create project');
-      setStreamingResponse("❌ Error creating project. Please try again.");
+      console.error('Error in project creation and chat:', err);
+      setError(err instanceof Error ? err.message : 'Failed to process request');
+      setStreamingResponse("❌ Error occurred. Please try again.");
       
       // Update temporary project with error status
       setProjects(prev => 
@@ -179,7 +243,7 @@ export function PromptInterface(): JSX.Element {
       <div className="w-1/2 border-r bg-gray-50/30 flex flex-col">
         <div className="p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">Create Solana App</h2>
-          <p className="text-sm text-gray-600 mt-1">Describe your app and we'll generate it for you</p>
+          <p className="text-sm text-gray-600 mt-1">Describe your app and we&apos;ll generate it for you</p>
         </div>
         
         <div className="flex-1 p-6">
@@ -196,6 +260,28 @@ export function PromptInterface(): JSX.Element {
                 className="min-h-[200px] resize-none"
                 disabled={isGenerating}
               />
+            </div>
+            
+            <div>
+              <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
+                Model
+              </label>
+              <Select
+                value={selectedModel}
+                onValueChange={setSelectedModel}
+                disabled={isGenerating}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={AVAILABLE_MODELS.find(m => m.value === selectedModel)?.label || "Select a model"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {AVAILABLE_MODELS.map((model) => (
+                    <SelectItem key={model.value} value={model.value}>
+                      {model.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             {error && (

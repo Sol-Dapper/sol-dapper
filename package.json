@@ -22,11 +22,13 @@
     "packages/*"
   ],
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.22",
     "@prisma/client": "^6.15.0",
     "@privy-io/react-auth": "^2.14.2",
     "@solana/spl-token": "^0.4.13",
     "@types/cors": "^2.8.19",
     "@types/jsonwebtoken": "^9.0.10",
+    "ai": "^5.0.26",
     "cors": "^2.8.5",
     "jsonwebtoken": "^9.0.2",
     "prisma": "^6.15.0"
