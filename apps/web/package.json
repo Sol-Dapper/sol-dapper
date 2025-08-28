@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "@privy-io/react-auth": "^2.14.2",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-separator": "^1.1.7",
+    "@radix-ui/react-slot": "^1.2.3",
     "@repo/ui": "*",
     "@tailwindcss/postcss": "^4.1.10",
     "class-variance-authority": "^0.7.1",

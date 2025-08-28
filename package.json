@@ -22,8 +22,13 @@
     "packages/*"
   ],
   "dependencies": {
+    "@prisma/client": "^6.15.0",
     "@privy-io/react-auth": "^2.14.2",
     "@solana/spl-token": "^0.4.13",
-    "prisma": "^6.9.0"
+    "@types/cors": "^2.8.19",
+    "@types/jsonwebtoken": "^9.0.10",
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "prisma": "^6.15.0"
   }
 }

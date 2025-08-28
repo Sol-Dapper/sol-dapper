@@ -9,35 +9,36 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  privyUserId   String   @unique
+  id            String    @id @default(uuid())
+  email         String    @unique
+  privyUserId   String    @unique
   walletAddress String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  projects      Project[]
 }
 
 model Project {
-  id            String   @id @default(uuid())
-  description   String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  prompts       Prompt[]
-  userId        String
+  id          String   @id @default(uuid())
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  prompts     Prompt[]
 }
 
 model Prompt {
-  id        String @id @default(uuid())
+  id        String     @id @default(uuid())
   content   String
   type      PromptType
-  createdAt DateTime @default(now())
-  updatedAT DateTime @updatedAt
-  project   Project  @relation(fields: [projectId], references: [id])
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   projectId String
+  project   Project    @relation(fields: [projectId], references: [id])
 }
 
 enum PromptType {
   USER
   SYSTEM
 }
-
