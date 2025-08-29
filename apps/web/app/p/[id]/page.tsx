@@ -1,6 +1,6 @@
 "use client"
 
-import { useParams, useSearchParams } from "next/navigation"
+import { useParams, useSearchParams, useRouter } from "next/navigation"
 import { usePrivy } from "@privy-io/react-auth"
 import { useState, useEffect, type JSX } from "react"
 import { Button } from "../../../components/ui/button"
@@ -12,7 +12,7 @@ import { ScrollArea } from "../../../components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { Navigation } from "../../../components/navigation"
 import { ProjectsSidebar } from "../../../components/ProjectsSidebar"
-import { Send, Loader2, AlertCircle, ArrowLeft, Calendar } from "lucide-react"
+import { Send, Loader2, AlertCircle, Calendar } from "lucide-react"
 import Link from "next/link"
 import { Label } from "../../../components/ui/label"
 
@@ -51,7 +51,8 @@ const AVAILABLE_MODELS = [
 export default function ProjectPage(): JSX.Element {
   const params = useParams()
   const searchParams = useSearchParams()
-  const { getAccessToken, authenticated, user, logout } = usePrivy()
+  const router = useRouter()
+  const { getAccessToken, authenticated, user, logout, ready } = usePrivy()
   const projectId = params?.id as string
 
   const [project, setProject] = useState<Project | null>(null)
@@ -267,12 +268,29 @@ export default function ProjectPage(): JSX.Element {
     }
   }
 
-  if (!authenticated) {
+  // Show loader while Privy is initializing
+  if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <Card className="w-full max-w-md">
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">Please log in to view this project.</p>
+            <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin" />
+            <p className="text-muted-foreground">Loading...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Redirect to home if not authenticated
+  if (!authenticated || !user) {
+    router.push('/')
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin" />
+            <p className="text-muted-foreground">Redirecting...</p>
           </CardContent>
         </Card>
       </div>

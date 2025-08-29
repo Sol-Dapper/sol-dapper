@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Label } from "../components/ui/label"
 import { Navigation } from "../components/navigation"
 import { ProjectsSidebar } from "../components/ProjectsSidebar"
+import { LoginForm } from "../components/login-form"
 import { type JSX, useEffect, useState, useCallback } from "react"
 import { registerUser } from "../lib/api"
 import { useRouter } from "next/navigation"
-import { Zap, Wallet, Mail, Shield, Send, Loader2, AlertCircle } from "lucide-react"
+import { Zap, Send, Loader2, AlertCircle } from "lucide-react"
 
 type ProjectStatus = "creating" | "generating" | "completed" | "error"
 
@@ -160,69 +161,46 @@ export default function Home(): JSX.Element {
     }
   }
 
-  if (!authenticated || !user) {
+  if (!ready) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-8">
-        <div className="w-full max-w-2xl mx-auto">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-primary/5 border border-primary/10 mb-8">
-              <Zap className="h-10 w-10 text-primary" />
-            </div>
-            <h1 className="text-4xl font-bold text-foreground mb-4">Sol-Dapper</h1>
-            <p className="text-xl text-muted-foreground mb-12 max-w-lg mx-auto leading-relaxed">
-              Build powerful Solana applications with AI assistance in minutes
-            </p>
+        <div className="w-full max-w-lg mx-auto text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-primary/5 border border-primary/10 mb-8">
+            <Zap className="h-10 w-10 text-primary" />
           </div>
-
+          <h1 className="text-3xl font-bold text-foreground mb-3">Loading Sol-Dapper</h1>
+          <p className="text-muted-foreground mb-12 text-lg leading-relaxed">
+            Initializing your workspace...
+          </p>
+          
           <Card className="p-10 border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
-            <div className="space-y-8">
-              <div className="text-center">
-                <h2 className="text-2xl font-semibold text-foreground mb-3">Get Started</h2>
-                <p className="text-muted-foreground leading-relaxed">
-                  Connect your wallet or sign in with email to begin creating innovative Solana applications
-                </p>
+            <div className="flex flex-col items-center gap-6">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
               </div>
-
-              <div className="grid gap-4">
-                <div className="flex items-center gap-4 p-5 rounded-2xl bg-muted/20 border border-border/30 hover:bg-muted/30 transition-colors">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
-                    <Wallet className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-foreground mb-1">Wallet Connection</p>
-                    <p className="text-sm text-muted-foreground">Secure crypto wallet integration with multiple providers</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 p-5 rounded-2xl bg-muted/20 border border-border/30 hover:bg-muted/30 transition-colors">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
-                    <Zap className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-foreground mb-1">AI-Powered Generation</p>
-                    <p className="text-sm text-muted-foreground">Advanced AI models for intelligent code creation</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 p-5 rounded-2xl bg-muted/20 border border-border/30 hover:bg-muted/30 transition-colors">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
-                    <Shield className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-foreground mb-1">Secure & Private</p>
-                    <p className="text-sm text-muted-foreground">Your data stays protected with enterprise security</p>
-                  </div>
-                </div>
+              <div className="space-y-3 text-center">
+                <p className="font-medium text-foreground text-lg">Loading...</p>
+                <p className="text-muted-foreground">Please wait</p>
               </div>
-
-              <Button onClick={login} className="w-full h-14 text-lg font-medium">
-                Connect & Continue
-              </Button>
             </div>
           </Card>
         </div>
       </div>
     )
+  }
+
+  if (!authenticated || !user) {
+    return (
+      <main
+        role="main"
+        aria-label="Sol-Dapper authentication"
+        className="min-h-screen bg-background flex items-center justify-center p-6"
+      >
+        <div className="w-full max-w-md mx-auto">
+          <LoginForm onLogin={login} />
+        </div>
+      </main>
+    );
   }
 
   if (isRegistering) {
@@ -234,7 +212,7 @@ export default function Home(): JSX.Element {
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-3">Setting Up Your Account</h1>
           <p className="text-muted-foreground mb-12 text-lg leading-relaxed">
-            We're preparing your personalized workspace...
+            We&apos;re preparing your personalized workspace...
           </p>
           
           <Card className="p-10 border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
