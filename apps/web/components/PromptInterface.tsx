@@ -1,255 +1,240 @@
-"use client";
+"use client"
 
-import { useState, useEffect, JSX } from "react";
-import { usePrivy } from "@privy-io/react-auth";
-import { Button } from "./ui/button";
-import { Textarea } from "./ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Separator } from "./ui/separator";
-import { Badge } from "./ui/badge";
-import { ScrollArea } from "./ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "components/ui/select";
-import { Send, Loader2, AlertCircle } from "lucide-react";
+import { useState, useEffect, type JSX } from "react"
+import { usePrivy } from "@privy-io/react-auth"
+import { Button } from "./ui/button"
+import { Textarea } from "./ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
+import { Separator } from "./ui/separator"
+import { Badge } from "./ui/badge"
+import { ScrollArea } from "./ui/scroll-area"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
+import { Send, Loader2, AlertCircle } from "lucide-react"
+import Link from "next/link"
 
 interface Project {
-  id: string;
-  description: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
+  id: string
+  description: string
+  userId: string
+  createdAt: string
+  updatedAt: string
 }
 
-type ProjectStatus = 'creating' | 'generating' | 'completed' | 'error';
+type ProjectStatus = "creating" | "generating" | "completed" | "error"
 
 interface ProjectWithStatus extends Project {
-  status?: ProjectStatus;
+  status?: ProjectStatus
 }
 
-// Available OpenAI models
 const AVAILABLE_MODELS = [
-  { value: 'gpt-4o', label: 'GPT-4o (Latest)' },
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-  { value: 'gpt-4', label: 'GPT-4' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-] as const;
+  { value: "gpt-4o", label: "GPT-4o (Latest)" },
+  { value: "gpt-4o-mini", label: "GPT-4o Mini" },
+  { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+  { value: "gpt-4", label: "GPT-4" },
+  { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
+  { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet" },
+  { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
+] as const
 
 export function PromptInterface(): JSX.Element {
-  const { getAccessToken } = usePrivy();
-  const [prompt, setPrompt] = useState<string>("");
-  const [selectedModel, setSelectedModel] = useState<string>("gpt-4o");
-  const [projects, setProjects] = useState<ProjectWithStatus[]>([]);
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [streamingResponse, setStreamingResponse] = useState<string>("");
-  const [error, setError] = useState<string>("");
+  const { getAccessToken } = usePrivy()
+  const [prompt, setPrompt] = useState<string>("")
+  const [selectedModel, setSelectedModel] = useState<string>("gpt-4o")
+  const [projects, setProjects] = useState<ProjectWithStatus[]>([])
+  const [isGenerating, setIsGenerating] = useState<boolean>(false)
+  const [streamingResponse, setStreamingResponse] = useState<string>("")
+  const [error, setError] = useState<string>("")
 
-  // Load existing projects on mount
   useEffect(() => {
-    loadProjects();
-  }, []);
+    loadProjects()
+  }, [])
 
   const loadProjects = async (): Promise<void> => {
     try {
-      const token = await getAccessToken();
-      console.log("here is the token",token)
+      const token = await getAccessToken()
       if (!token) {
-        setError("Failed to get authentication token");
-        return;
+        setError("Failed to get authentication token")
+        return
       }
 
-      const response = await fetch('http://localhost:3001/projects', {
+      const response = await fetch("http://localhost:3001/projects", {
         headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json',
+          Authorization: token,
+          "Content-Type": "application/json",
         },
-      });
+      })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || errorData.message || response.statusText;
-        throw new Error(`Failed to load projects: ${errorMessage}`);
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.error || errorData.message || response.statusText
+        throw new Error(`Failed to load projects: ${errorMessage}`)
       }
 
-      const projectsData: Project[] = await response.json();
-      setProjects(projectsData.map(p => ({ ...p, status: 'completed' })));
+      const projectsData: Project[] = await response.json()
+      setProjects(projectsData.map((p) => ({ ...p, status: "completed" })))
     } catch (err) {
-      console.error('Error loading projects:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load projects');
+      console.error("Error loading projects:", err)
+      setError(err instanceof Error ? err.message : "Failed to load projects")
     }
-  };
+  }
 
   const handleSubmit = async (): Promise<void> => {
-    if (!prompt.trim() || isGenerating) return;
+    if (!prompt.trim() || isGenerating) return
 
-    setIsGenerating(true);
-    setStreamingResponse("");
-    setError("");
-    
-    // Create temporary project for immediate feedback
+    setIsGenerating(true)
+    setStreamingResponse("")
+    setError("")
+
     const tempProject: ProjectWithStatus = {
       id: `temp-${Date.now()}`,
-      description: prompt.split('\n')[0] || prompt,
-      userId: '',
+      description: prompt.split("\n")[0] || prompt,
+      userId: "",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      status: 'creating'
-    };
-    
-    setProjects(prev => [tempProject, ...prev]);
+      status: "creating",
+    }
+
+    setProjects((prev) => [tempProject, ...prev])
 
     try {
-      const token = await getAccessToken();
+      const token = await getAccessToken()
       if (!token) {
-        throw new Error("Failed to get authentication token");
+        throw new Error("Failed to get authentication token")
       }
 
-      // Step 1: Create the project
-      setStreamingResponse("🚀 Creating project...\n\n");
-      
-      const projectResponse = await fetch('http://localhost:3001/project', {
-        method: 'POST',
+      setStreamingResponse("🚀 Creating project...\n\n")
+
+      const projectResponse = await fetch("http://localhost:3001/project", {
+        method: "POST",
         headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json',
+          Authorization: token,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ prompt }),
-      });
+      })
 
       if (!projectResponse.ok) {
-        const errorData = await projectResponse.json().catch(() => ({}));
-        const errorMessage = errorData.error || errorData.message || projectResponse.statusText;
-        throw new Error(`Failed to create project: ${errorMessage}`);
+        const errorData = await projectResponse.json().catch(() => ({}))
+        const errorMessage = errorData.error || errorData.message || projectResponse.statusText
+        throw new Error(`Failed to create project: ${errorMessage}`)
       }
 
-      const projectResult = await projectResponse.json();
-      const projectId = projectResult.project;
-      
-      // Update streaming response and project status
-      setStreamingResponse(prev => prev + "✅ Project created successfully!\n\n");
-      setStreamingResponse(prev => prev + `📝 Project ID: ${projectId}\n`);
-      setStreamingResponse(prev => prev + `📋 Description: ${prompt.split('\n')[0]}\n\n`);
-      setStreamingResponse(prev => prev + "🤖 Generating AI response...\n\n");
-      
-      // Update the temporary project with the real project ID
-      setProjects(prev => 
-        prev.map(p => 
-          p.id === tempProject.id 
-            ? { 
-                ...p, 
-                id: projectId,
-                status: 'generating' as ProjectStatus
-              }
-            : p
-        )
-      );
+      const projectResult = await projectResponse.json()
+      const projectId = projectResult.project
 
-      // Step 2: Send the prompt to chat endpoint for AI response
-      const chatResponse = await fetch('http://localhost:3001/chat', {
-        method: 'POST',
+      setStreamingResponse((prev) => prev + "✅ Project created successfully!\n\n")
+      setStreamingResponse((prev) => prev + `📝 Project ID: ${projectId}\n`)
+      setStreamingResponse((prev) => prev + `📋 Description: ${prompt.split("\n")[0]}\n\n`)
+      setStreamingResponse((prev) => prev + "🤖 Generating AI response...\n\n")
+
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === tempProject.id
+            ? {
+                ...p,
+                id: projectId,
+                status: "generating" as ProjectStatus,
+              }
+            : p,
+        ),
+      )
+
+      const chatResponse = await fetch("http://localhost:3001/chat", {
+        method: "POST",
         headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json',
+          Authorization: token,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           prompt,
           projectId,
-          model: selectedModel
+          model: selectedModel,
         }),
-      });
+      })
 
       if (!chatResponse.ok) {
-        const errorData = await chatResponse.json().catch(() => ({}));
-        const errorMessage = errorData.error || errorData.message || chatResponse.statusText;
-        throw new Error(`Failed to get AI response: ${errorMessage}`);
+        const errorData = await chatResponse.json().catch(() => ({}))
+        const errorMessage = errorData.error || errorData.message || chatResponse.statusText
+        throw new Error(`Failed to get AI response: ${errorMessage}`)
       }
 
-      // Handle streaming response
-      const reader = chatResponse.body?.getReader();
-      const decoder = new TextDecoder();
-      
+      const reader = chatResponse.body?.getReader()
+      const decoder = new TextDecoder()
+
       if (!reader) {
-        throw new Error('No response stream available');
+        throw new Error("No response stream available")
       }
 
-      setStreamingResponse(''); // Clear any previous content
+      setStreamingResponse("")
 
       try {
         while (true) {
-          const { done, value } = await reader.read();
-          
-          if (done) {
-            break;
-          }
-          
-          const chunk = decoder.decode(value, { stream: true });
-          setStreamingResponse(prev => prev + chunk);
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value, { stream: true })
+          setStreamingResponse((prev) => prev + chunk)
         }
       } finally {
-        reader.releaseLock();
+        reader.releaseLock()
       }
 
-      // Update the project with completed status
-      setProjects(prev => 
-        prev.map(p => 
-          p.id === projectId 
-            ? { ...p, status: 'completed' as ProjectStatus }
-            : p
-        )
-      );
-
+      setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, status: "completed" as ProjectStatus } : p)))
     } catch (err) {
-      console.error('Error in project creation and chat:', err);
-      setError(err instanceof Error ? err.message : 'Failed to process request');
-      setStreamingResponse("❌ Error occurred. Please try again.");
-      
-      // Update temporary project with error status
-      setProjects(prev => 
-        prev.map(p => 
-          p.id === tempProject.id 
-            ? { ...p, status: 'error' as ProjectStatus }
-            : p
-        )
-      );
+      console.error("Error in project creation and chat:", err)
+      setError(err instanceof Error ? err.message : "Failed to process request")
+      setStreamingResponse("❌ Error occurred. Please try again.")
+
+      setProjects((prev) => prev.map((p) => (p.id === tempProject.id ? { ...p, status: "error" as ProjectStatus } : p)))
     } finally {
-      setIsGenerating(false);
+      setIsGenerating(false)
     }
-    
-    setPrompt("");
-  };
 
-  const getStatusColor = (status: ProjectStatus = 'completed'): string => {
-    switch (status) {
-      case 'creating': return 'bg-yellow-500';
-      case 'generating': return 'bg-blue-500';
-      case 'completed': return 'bg-green-500';
-      case 'error': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
+    setPrompt("")
+  }
 
-  const getStatusText = (status: ProjectStatus = 'completed'): string => {
+  const getStatusColor = (status: ProjectStatus = "completed"): string => {
     switch (status) {
-      case 'creating': return 'Creating';
-      case 'generating': return 'Generating';
-      case 'completed': return 'Ready';
-      case 'error': return 'Error';
-      default: return 'Unknown';
+      case "creating":
+        return "bg-yellow-500"
+      case "generating":
+        return "bg-blue-500"
+      case "completed":
+        return "bg-green-500"
+      case "error":
+        return "bg-red-500"
+      default:
+        return "bg-gray-500"
     }
-  };
+  }
+
+  const getStatusText = (status: ProjectStatus = "completed"): string => {
+    switch (status) {
+      case "creating":
+        return "Creating"
+      case "generating":
+        return "Generating"
+      case "completed":
+        return "Ready"
+      case "error":
+        return "Error"
+      default:
+        return "Unknown"
+    }
+  }
 
   return (
-    <div className="h-screen flex">
-      {/* Left Panel - Prompt Input */}
-      <div className="w-1/2 border-r bg-gray-50/30 flex flex-col">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">Create Solana App</h2>
-          <p className="text-sm text-gray-600 mt-1">Describe your app and we&apos;ll generate it for you</p>
-        </div>
-        
-        <div className="flex-1 p-6">
-          <div className="space-y-4">
+    <div className="h-[calc(100vh-64px)] grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-background">
+      {/* Left Column - Input only */}
+      <div className="flex flex-col h-full min-h-0">
+        <Card className="rounded-lg h-full">
+          <CardHeader>
+            <CardTitle className="text-balance">Create Solana App</CardTitle>
+            <p className="text-sm text-muted-foreground">Describe your app and we&apos;ll generate it</p>
+          </CardHeader>
+          <Separator />
+          <CardContent className="space-y-4 pt-4">
             <div>
-              <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="prompt" className="block text-sm font-medium mb-2">
                 Project Description
               </label>
               <Textarea
@@ -257,22 +242,20 @@ export function PromptInterface(): JSX.Element {
                 placeholder="Describe the Solana application you want to create..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[200px] resize-none"
+                className="min-h-[160px] resize-none"
                 disabled={isGenerating}
               />
             </div>
-            
+
             <div>
-              <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="model" className="block text-sm font-medium mb-2">
                 Model
               </label>
-              <Select
-                value={selectedModel}
-                onValueChange={setSelectedModel}
-                disabled={isGenerating}
-              >
+              <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isGenerating}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={AVAILABLE_MODELS.find(m => m.value === selectedModel)?.label || "Select a model"} />
+                  <SelectValue
+                    placeholder={AVAILABLE_MODELS.find((m) => m.value === selectedModel)?.label || "Select a model"}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {AVAILABLE_MODELS.map((model) => (
@@ -283,19 +266,15 @@ export function PromptInterface(): JSX.Element {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {error && (
-              <div className="flex items-center space-x-2 text-red-600 text-sm">
+              <div className="flex items-center gap-2 text-destructive text-sm">
                 <AlertCircle className="h-4 w-4" />
                 <span>{error}</span>
               </div>
             )}
-            
-            <Button
-              onClick={handleSubmit}
-              disabled={!prompt.trim() || isGenerating}
-              className="w-full"
-            >
+
+            <Button onClick={handleSubmit} disabled={!prompt.trim() || isGenerating} className="w-full" size="lg">
               {isGenerating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -308,78 +287,80 @@ export function PromptInterface(): JSX.Element {
                 </>
               )}
             </Button>
-          </div>
-          
-          <Separator className="my-6" />
-          
-          {/* Previous Projects */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Recent Projects</h3>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Right Column - Output + Recent Projects */}
+      <div className="flex flex-col h-full min-h-0 gap-4">
+        {/* Output */}
+        <Card className="rounded-lg flex-1 min-h-0 flex flex-col">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-balance">Generation Output</CardTitle>
+            <p className="text-sm text-muted-foreground">Real-time project creation progress</p>
+          </CardHeader>
+          <Separator />
+          <CardContent className="flex-1 min-h-0 p-0">
+            <ScrollArea className="h-full p-4">
+              {streamingResponse ? (
+                <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed">{streamingResponse}</pre>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <div className="text-muted-foreground text-6xl mb-4">⚡</div>
+                    <p className="text-sm text-muted-foreground">
+                      Start creating a project to see the generation output here
+                    </p>
+                  </div>
+                </div>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* Recent Projects (moved to right) */}
+        <Card className="rounded-lg min-h-0">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Recent Conversations</CardTitle>
               <Button variant="ghost" size="sm" onClick={loadProjects}>
                 Refresh
               </Button>
             </div>
-            <ScrollArea className="h-[300px]">
+          </CardHeader>
+          <Separator />
+          <CardContent className="p-0 min-h-0">
+            <ScrollArea className="h-[260px] p-4">
               <div className="space-y-3">
                 {projects.map((project) => (
-                  <Card key={project.id} className="cursor-pointer hover:bg-gray-50 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <Badge 
-                          className={`${getStatusColor(project.status)} text-white text-xs`}
-                        >
-                          {getStatusText(project.status)}
-                        </Badge>
-                        <span className="text-xs text-gray-500">
-                          {new Date(project.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-700 line-clamp-2">{project.description}</p>
-                      <p className="text-xs text-gray-500 mt-1 font-mono">ID: {project.id}</p>
-                    </CardContent>
-                  </Card>
+                  <Link key={project.id} href={`/p/${project.id}`}>
+                    <Card className="cursor-pointer hover:bg-accent transition-colors rounded-md">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <Badge className={`${getStatusColor(project.status)} text-white text-xs`}>
+                            {getStatusText(project.status)}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(project.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm line-clamp-2">{project.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1 font-mono">ID: {project.id}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
-                
+
                 {projects.length === 0 && (
                   <div className="text-center py-8">
-                    <p className="text-gray-500 text-sm">No projects yet. Create your first Solana app!</p>
+                    <p className="text-sm text-muted-foreground">No conversations yet.</p>
                   </div>
                 )}
               </div>
             </ScrollArea>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Panel - Streaming Response */}
-      <div className="w-1/2 flex flex-col">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">Generation Output</h2>
-          <p className="text-sm text-gray-600 mt-1">Real-time project creation progress</p>
-        </div>
-        
-        <div className="flex-1 p-6">
-          <Card className="h-full">
-            <CardContent className="p-6 h-full">
-              <ScrollArea className="h-full">
-                {streamingResponse ? (
-                  <pre className="whitespace-pre-wrap text-sm font-mono text-gray-800 leading-relaxed">
-                    {streamingResponse}
-                  </pre>
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                      <div className="text-gray-400 text-6xl mb-4">⚡</div>
-                      <p className="text-gray-500">Start creating a project to see the generation output here</p>
-                    </div>
-                  </div>
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
-  );
+  )
 }

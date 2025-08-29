@@ -4,6 +4,7 @@
     "": {
       "name": "myfile",
       "dependencies": {
+        "@ai-sdk/anthropic": "^2.0.9",
         "@ai-sdk/openai": "^2.0.22",
         "@prisma/client": "^6.15.0",
         "@privy-io/react-auth": "^2.14.2",
@@ -24,9 +25,11 @@
     "apps/backend": {
       "name": "backend",
       "dependencies": {
+        "@ai-sdk/openai": "^2.0.22",
         "@types/cors": "^2.8.17",
         "@types/express": "^5.0.3",
         "@types/jsonwebtoken": "^9.0.6",
+        "ai": "^5.0.26",
         "cors": "^2.8.5",
         "db": "*",
         "express": "^5.1.0",
@@ -138,6 +141,8 @@
   },
   "packages": {
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.10.1", "", {}, "sha512-96Z2IP3mYmF1Xg2cDm8f1gWGf/HUVedQ3FMifV4kG/PQ4yEP51xDtRAEfhVNt5f/uzpNkZHwWQuUcu6D6K+Ekw=="],
+
+    "@ai-sdk/anthropic": ["@ai-sdk/anthropic@2.0.9", "", { "dependencies": { "@ai-sdk/provider": "2.0.0", "@ai-sdk/provider-utils": "3.0.7" }, "peerDependencies": { "zod": "^3.25.76 || ^4" } }, "sha512-1kQgL2A3PeqfEcHHmqy4NxRc8rbgLS71bHBuvDFfDz3VAAyndkilPMCLNDSP2mJVGAej2EMWJ1sShRAxzn70jA=="],
 
     "@ai-sdk/gateway": ["@ai-sdk/gateway@1.0.15", "", { "dependencies": { "@ai-sdk/provider": "2.0.0", "@ai-sdk/provider-utils": "3.0.7" }, "peerDependencies": { "zod": "^3.25.76 || ^4" } }, "sha512-xySXoQ29+KbGuGfmDnABx+O6vc7Gj7qugmj1kGpn0rW0rQNn6UKUuvscKMzWyv1Uv05GyC1vqHq8ZhEOLfXscQ=="],
 

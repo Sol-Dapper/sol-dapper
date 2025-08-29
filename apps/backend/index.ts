@@ -6,6 +6,7 @@ import { basePrompt } from "./prompts/baseprompt";
 import { SYSTEM_PROMPT, BASE_PROMPT_REACT } from "./prompts/prompt";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { anthropic } from "@ai-sdk/anthropic";
 
 const app = express();
 
@@ -80,10 +81,45 @@ app.get("/projects", authMiddleware, async (req, res) => {
   res.json(projects);
 });
 
+app.get("/project/:id", authMiddleware, async (req, res) => {
+  const { id: projectId } = req.params;
+  const privyUserId = req.privyUserId;
+
+  try {
+    const user = await prismaClient.user.findUnique({
+      where: { privyUserId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const project = await prismaClient.project.findFirst({
+      where: {
+        id: projectId,
+        userId: user.id,
+      },
+      include: {
+        prompts: {
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found or access denied" });
+    }
+
+    res.json(project);
+  } catch (error) {
+    console.error("Error fetching project:", error);
+    res.status(500).json({ error: "Failed to fetch project" });
+  }
+});
+
 app.post("/chat", authMiddleware, async (req, res) => {
   const { prompt: userPrompt, projectId, model = "gpt-4o" } = req.body;
   const privyUserId = req.privyUserId!;
-  console.log("Using the model =====>", model);
   try {
     // Validate inputs
     if (!userPrompt || !projectId) {
@@ -123,20 +159,27 @@ app.post("/chat", authMiddleware, async (req, res) => {
       .map((p) => `${p.type}: ${p.content}`)
       .join("\n");
 
-    // Generate AI response with streaming using selected model
+    // Determine which AI provider to use based on model name
+    let aiProvider;
+    if (model === "claude-3-7-sonnet-20250219" || model === "claude-sonnet-4-20250514") {
+      // Use Anthropic's Claude models
+      aiProvider = anthropic(model);
+    } else {
+      // Default to OpenAI models
+      aiProvider = openai(model);
+    }
     const result = await streamText({
-      model: openai(model),
+      model: aiProvider,
       messages: [
         { role: "system", content: SYSTEM_PROMPT() },
         { role: "system", content: basePrompt },
         { role: "system", content: BASE_PROMPT_REACT },
         { role: "user", content: userPrompt },
       ],
-      maxOutputTokens: 4000,
+      maxOutputTokens: 8000,
       temperature: 0.7,
     });
 
-    // Save user prompt to database
     await prismaClient.prompt.create({
       data: {
         content: userPrompt,
@@ -145,7 +188,6 @@ app.post("/chat", authMiddleware, async (req, res) => {
       },
     });
 
-    // Set headers for streaming
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Transfer-Encoding", "chunked");
 
@@ -159,7 +201,6 @@ app.post("/chat", authMiddleware, async (req, res) => {
 
     res.end();
 
-    // Save AI response to database
     await prismaClient.prompt.create({
       data: {
         content: fullResponse,
@@ -168,7 +209,6 @@ app.post("/chat", authMiddleware, async (req, res) => {
       },
     });
 
-    console.log("AI Response:", fullResponse);
   } catch (error) {
     console.error("Chat endpoint error:", error);
     res.status(500).json({ error: "Failed to generate response" });
