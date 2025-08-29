@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type JSX } from "react"
 import { usePrivy } from "@privy-io/react-auth"
+import { useRouter } from "next/navigation"
 import { Button } from "./ui/button"
 import { Textarea } from "./ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
@@ -13,6 +14,7 @@ import { Label } from "./ui/label"
 import { Skeleton } from "./ui/skeleton"
 import { Send, Loader2, AlertCircle, History, Zap, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle } from "lucide-react"
 import Link from "next/link"
+import { ProjectsSidebar } from "./ProjectsSidebar"
 
 interface Project {
   id: string
@@ -29,17 +31,18 @@ interface ProjectWithStatus extends Project {
 }
 
 const AVAILABLE_MODELS = [
-  { value: "gpt-4o", label: "GPT-4o", description: "Latest OpenAI model" },
-  { value: "gpt-4o-mini", label: "GPT-4o Mini", description: "Faster, cost-effective" },
-  { value: "gpt-4-turbo", label: "GPT-4 Turbo", description: "High performance" },
-  { value: "gpt-4", label: "GPT-4", description: "Reliable choice" },
-  { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo", description: "Quick responses" },
-  { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet", description: "Advanced reasoning" },
-  { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4", description: "Latest Claude model" },
+  { value: "gpt-4o", label: "GPT-4o"},
+  { value: "gpt-4o-mini", label: "GPT-4o Mini" },
+  { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+  { value: "gpt-4", label: "GPT-4" },
+  { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
+  { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet"},
+  { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
 ] as const
 
 export function PromptInterface(): JSX.Element {
   const { getAccessToken } = usePrivy()
+  const router = useRouter()
   const [prompt, setPrompt] = useState<string>("")
   const [selectedModel, setSelectedModel] = useState<string>("gpt-4o")
   const [projects, setProjects] = useState<ProjectWithStatus[]>([])
@@ -186,6 +189,11 @@ export function PromptInterface(): JSX.Element {
       }
 
       setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, status: "completed" as ProjectStatus } : p)))
+      
+      // Navigate to the project page after successful creation and generation
+      setTimeout(() => {
+        router.push(`/p/${projectId}`)
+      }, 1000) // Small delay to let user see the completion status
     } catch (err) {
       console.error("Error in project creation:", err)
       setError(err instanceof Error ? err.message : "An unexpected error occurred")
@@ -245,6 +253,11 @@ export function PromptInterface(): JSX.Element {
 
   return (
     <div className="min-h-[calc(100vh-100px)] bg-background">
+      <ProjectsSidebar 
+        projects={projects}
+        isLoadingProjects={isLoadingProjects}
+        onLoadProjects={loadProjects}
+      />
       <div className="mx-auto px-12 py-12">
         <div className="grid h-full grid-cols-1 gap-8 lg:grid-cols-2">
           {/* Left Column - Input */}
@@ -291,9 +304,6 @@ export function PromptInterface(): JSX.Element {
                       <SelectValue>
                         <div className="flex items-center gap-3">
                           <span className="font-medium">{AVAILABLE_MODELS.find((m) => m.value === selectedModel)?.label}</span>
-                          <span className="text-sm text-muted-foreground">
-                            • {AVAILABLE_MODELS.find((m) => m.value === selectedModel)?.description}
-                          </span>
                         </div>
                       </SelectValue>
                     </SelectTrigger>
@@ -302,7 +312,6 @@ export function PromptInterface(): JSX.Element {
                         <SelectItem key={model.value} value={model.value} className="py-4">
                           <div className="flex flex-col gap-2">
                             <span className="font-medium text-base">{model.label}</span>
-                            <span className="text-sm text-muted-foreground">{model.description}</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -342,9 +351,8 @@ export function PromptInterface(): JSX.Element {
             </Card>
           </div>
 
-          {/* Right Column - Output + Recent Projects */}
-          <div className="flex min-h-0 flex-col gap-8">
-            {/* Output */}
+          {/* Right Column - Output */}
+          <div className="flex min-h-0 flex-col">
             <Card className="flex min-h-0 flex-1 flex-col border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-6">
                 <div className="flex items-center gap-4">
@@ -385,103 +393,6 @@ export function PromptInterface(): JSX.Element {
                           </div>
                         </div>
                       </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            {/* Recent Projects */}
-            <Card className="min-h-0 border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
-              <CardHeader className="pb-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
-                      <History className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl mb-2">Recent Projects</CardTitle>
-                      <p className="text-muted-foreground leading-relaxed">
-                        Your project history and conversations
-                      </p>
-                    </div>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={loadProjects}
-                    disabled={isLoadingProjects}
-                    className="h-10 w-10 p-0 hover:bg-muted/50"
-                  >
-                    <RefreshCw className={`h-5 w-5 ${isLoadingProjects ? 'animate-spin' : ''}`} />
-                  </Button>
-                </div>
-              </CardHeader>
-              <Separator className="mx-6" />
-              <CardContent className="min-h-0 p-0">
-                <ScrollArea className="h-[320px]">
-                  <div className="p-8 space-y-4">
-                    {isLoadingProjects ? (
-                      <div className="space-y-4">
-                        {[...Array(3)].map((_, i) => (
-                          <Card key={i} className="border-border/30">
-                            <CardContent className="p-5">
-                              <div className="mb-4 flex items-center justify-between">
-                                <Skeleton className="h-6 w-16" />
-                                <Skeleton className="h-4 w-20" />
-                              </div>
-                              <Skeleton className="h-4 w-full mb-2" />
-                              <Skeleton className="h-4 w-3/4 mb-3" />
-                              <Skeleton className="h-6 w-32" />
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <>
-                        {projects.map((project) => (
-                          <Link key={project.id} href={`/p/${project.id}`}>
-                            <Card className="group cursor-pointer transition-all hover:bg-muted/30 hover:border-primary/20 border-border/30 hover:shadow-md">
-                              <CardContent className="p-5">
-                                <div className="mb-4 flex items-center justify-between">
-                                  <Badge 
-                                    variant="outline"
-                                    className={`${getStatusColor(project.status)} border text-sm font-medium px-3 py-1`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      {getStatusIcon(project.status)}
-                                      {getStatusText(project.status)}
-                                    </div>
-                                  </Badge>
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Clock className="h-4 w-4" />
-                                    <span>{new Date(project.createdAt).toLocaleDateString()}</span>
-                                    <ExternalLink className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                  </div>
-                                </div>
-                                <p className="line-clamp-2 text-base text-foreground mb-3 leading-relaxed">
-                                  {project.description}
-                                </p>
-                                <Badge variant="secondary" className="font-mono text-xs">
-                                  {project.id}
-                                </Badge>
-                              </CardContent>
-                            </Card>
-                          </Link>
-                        ))}
-
-                        {projects.length === 0 && !isLoadingProjects && (
-                          <div className="py-16 text-center">
-                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/30 border border-border/30 mx-auto mb-6">
-                              <History className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                            <p className="font-semibold text-foreground mb-2 text-lg">No projects yet</p>
-                            <p className="text-muted-foreground leading-relaxed">
-                              Start creating your first Solana application to see it here
-                            </p>
-                          </div>
-                        )}
-                      </>
                     )}
                   </div>
                 </ScrollArea>

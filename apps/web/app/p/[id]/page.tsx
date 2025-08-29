@@ -1,6 +1,6 @@
 "use client"
 
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { usePrivy } from "@privy-io/react-auth"
 import { useState, useEffect, type JSX } from "react"
 import { Button } from "../../../components/ui/button"
@@ -11,6 +11,7 @@ import { Badge } from "../../../components/ui/badge"
 import { ScrollArea } from "../../../components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { Navigation } from "../../../components/navigation"
+import { ProjectsSidebar } from "../../../components/ProjectsSidebar"
 import { Send, Loader2, AlertCircle, ArrowLeft, Calendar } from "lucide-react"
 import Link from "next/link"
 import { Label } from "../../../components/ui/label"
@@ -31,6 +32,12 @@ interface Project {
   prompts: Prompt[]
 }
 
+type ProjectStatus = "creating" | "generating" | "completed" | "error"
+
+interface ProjectWithStatus extends Omit<Project, 'prompts'> {
+  status?: ProjectStatus
+}
+
 const AVAILABLE_MODELS = [
   { value: "gpt-4o", label: "GPT-4o (Latest)" },
   { value: "gpt-4o-mini", label: "GPT-4o Mini" },
@@ -43,6 +50,7 @@ const AVAILABLE_MODELS = [
 
 export default function ProjectPage(): JSX.Element {
   const params = useParams()
+  const searchParams = useSearchParams()
   const { getAccessToken, authenticated, user, logout } = usePrivy()
   const projectId = params?.id as string
 
@@ -54,11 +62,33 @@ export default function ProjectPage(): JSX.Element {
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [streamingResponse, setStreamingResponse] = useState<string>("")
 
+  // Projects state for sidebar
+  const [projects, setProjects] = useState<ProjectWithStatus[]>([])
+  const [isLoadingProjects, setIsLoadingProjects] = useState<boolean>(false)
+
   useEffect(() => {
     if (authenticated && projectId) {
       loadProject()
+      loadProjects()
     }
   }, [authenticated, projectId])
+
+  // Handle initial AI generation from URL parameters
+  useEffect(() => {
+    if (project && !isGenerating) {
+      const initialPrompt = searchParams.get('initialPrompt')
+      const model = searchParams.get('model')
+      
+      if (initialPrompt && model) {
+        // Set the model and start AI generation automatically
+        setSelectedModel(model)
+        handleInitialGeneration(initialPrompt, model)
+        
+        // Clear URL parameters
+        window.history.replaceState({}, '', `/p/${projectId}`)
+      }
+    }
+  }, [project, projectId, isGenerating])
 
   const loadProject = async (): Promise<void> => {
     try {
@@ -87,6 +117,35 @@ export default function ProjectPage(): JSX.Element {
       setError(err instanceof Error ? err.message : "Failed to load project")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadProjects = async (): Promise<void> => {
+    setIsLoadingProjects(true)
+    try {
+      const token = await getAccessToken()
+      if (!token) {
+        return
+      }
+
+      const response = await fetch("http://localhost:3001/projects", {
+        headers: {
+          Authorization: token,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        console.error("Failed to load projects")
+        return
+      }
+
+      const projectsData: Project[] = await response.json()
+      setProjects(projectsData.map((p) => ({ ...p, status: "completed" })))
+    } catch (err) {
+      console.error("Error loading projects:", err)
+    } finally {
+      setIsLoadingProjects(false)
     }
   }
 
@@ -148,6 +207,66 @@ export default function ProjectPage(): JSX.Element {
     }
   }
 
+  const handleInitialGeneration = async (prompt: string, model: string): Promise<void> => {
+    if (isGenerating || !project) return
+    
+    setIsGenerating(true)
+    setStreamingResponse("")
+    setError("")
+
+    try {
+      const token = await getAccessToken()
+      if (!token) {
+        throw new Error("Failed to get authentication token")
+      }
+
+      setStreamingResponse("🚀 Initializing AI generation...\n\n")
+
+      const chatResponse = await fetch("http://localhost:3001/chat", {
+        method: "POST",
+        headers: {
+          Authorization: token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          projectId: project.id,
+          model,
+        }),
+      })
+
+      if (!chatResponse.ok) {
+        const errorData = await chatResponse.json().catch(() => ({}))
+        const errorMessage = errorData.error || errorData.message || chatResponse.statusText
+        throw new Error(`Failed to get AI response: ${errorMessage}`)
+      }
+
+      const reader = chatResponse.body?.getReader()
+      const decoder = new TextDecoder()
+      if (!reader) throw new Error("No response stream available")
+
+      setStreamingResponse("")
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value, { stream: true })
+          setStreamingResponse((prev) => prev + chunk)
+        }
+      } finally {
+        reader.releaseLock()
+      }
+
+      await loadProject()
+    } catch (err) {
+      console.error("Error in initial generation:", err)
+      setError(err instanceof Error ? err.message : "Failed to process initial request")
+      setStreamingResponse("❌ Error occurred during initial generation. Please try again.")
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   if (!authenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
@@ -193,16 +312,23 @@ export default function ProjectPage(): JSX.Element {
     <div className="min-h-screen bg-background flex flex-col">
       <Navigation user={user} onLogout={logout} />
       
+      <ProjectsSidebar 
+        projects={projects}
+        isLoadingProjects={isLoadingProjects}
+        onLoadProjects={loadProjects}
+        topOffset={64}
+      />
+      
       {/* Project Header */}
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex w-full items-center justify-between px-12 py-6">
           <div className="flex items-center gap-6">
-            <Link href="/">
+            {/* <Link href="/">
               <Button variant="ghost" size="sm" className="h-10 px-4">
                 <ArrowLeft className="mr-2 h-5 w-5" />
                 Back to Home
               </Button>
-            </Link>
+            </Link> */}
             <div>
               <h2 className="text-xl font-semibold text-foreground">Project</h2>
               <p className="text-muted-foreground leading-relaxed">{project?.description}</p>
@@ -218,7 +344,7 @@ export default function ProjectPage(): JSX.Element {
       {/* Main Content */}
       <main className="flex-1 bg-background">
         <div className="mx-auto h-full w-full px-12 py-8">
-          <div className="grid h-full grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="grid h-full grid-cols-1 gap-8 md:grid-cols-[30%_70%]">
             {/* Left Column: Input */}
             <div className="flex min-h-0 flex-col">
               <Card className="h-full border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
