@@ -7,7 +7,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 
 import { 
   FileText, 
-  Code2, 
   FolderTree, 
   CheckCircle, 
   AlertTriangle,
@@ -16,7 +15,7 @@ import {
   Terminal
 } from 'lucide-react'
 import { Tree, type TreeViewElement } from '@/components/ui/file-tree'
-import { CodeEditor, CodeViewer } from '@/components/CodeEditor'
+import { CodeEditor } from '@/components/CodeEditor'
 import { AIResponseParser, type ParsedResponse, type ParsedFile } from '@/lib/xml-parser'
 
 interface AIResponseRendererProps {
@@ -38,6 +37,51 @@ export function AIResponseRenderer({ response }: AIResponseRendererProps) {
       setParsedResponse(parsed)
     }
   }, [response, parser])
+
+  // Automatically select the first file when files are available and no file is selected
+  useEffect(() => {
+    if (parsedResponse && parsedResponse.files.length > 0 && !selectedFileId) {
+      const firstFile = parsedResponse.files[0]
+      if (firstFile) {
+        setSelectedFileId(firstFile.id)
+        setSelectedFile(firstFile)
+      }
+    }
+  }, [parsedResponse, selectedFileId])
+
+  // Ensure selected file is still valid when files change
+  useEffect(() => {
+    if (parsedResponse && selectedFileId) {
+      const findFile = (files: ParsedFile[], id: string): ParsedFile | null => {
+        for (const file of files) {
+          if (file.id === id) return file
+          if (file.children) {
+            const found = findFile(file.children, id)
+            if (found) return found
+          }
+        }
+        return null
+      }
+
+      const allFiles = [...parsedResponse.files, ...parsedResponse.directories]
+      const file = findFile(allFiles, selectedFileId)
+      
+      if (!file) {
+        // Selected file no longer exists, select first available file
+        const firstFile = parsedResponse.files[0]
+        if (firstFile) {
+          setSelectedFileId(firstFile.id)
+          setSelectedFile(firstFile)
+        } else {
+          setSelectedFileId('')
+          setSelectedFile(null)
+        }
+      } else if (file !== selectedFile) {
+        // Update selected file if it changed
+        setSelectedFile(file)
+      }
+    }
+  }, [parsedResponse, selectedFileId, selectedFile])
 
   const treeData = useMemo(() => {
     if (!parsedResponse) return []
@@ -93,16 +137,72 @@ export function AIResponseRenderer({ response }: AIResponseRendererProps) {
   }
 
   const hasFiles = parsedResponse.files.length > 0 || parsedResponse.directories.length > 0
-  const hasCode = parsedResponse.codeBlocks.length > 0
   const hasReview = !!parsedResponse.review
   const hasArtifact = !!parsedResponse.artifact
   
   console.log('AIResponseRenderer - hasFiles:', hasFiles, 'files:', parsedResponse.files.length, 'directories:', parsedResponse.directories.length)
-  console.log('AIResponseRenderer - hasCode:', hasCode, 'codeBlocks:', parsedResponse.codeBlocks.length)
   console.log('AIResponseRenderer - hasArtifact:', hasArtifact)
 
   return (
     <div className="space-y-6">
+      {/* File Tree and Code Editor - Prioritized at Top */}
+      {hasFiles && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-950 border border-green-200 dark:border-green-800 flex items-center justify-center">
+              <FolderTree className="h-4 w-4 text-green-600 dark:text-green-400" />
+            </div>
+            <h3 className="font-semibold text-foreground">Project Files</h3>
+            <Badge variant="secondary" className="text-xs">
+              {parsedResponse.files.length} files
+            </Badge>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
+            {/* File Tree */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">File Explorer</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[600px]">
+                  <div className="p-4">
+                    <Tree
+                      data={treeData}
+                      handleSelect={handleFileSelect}
+                      initialSelectedId={selectedFileId}
+                      expandAll={true}
+                    />
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            {/* Code Editor */}
+            <div>
+              {selectedFile ? (
+                <CodeEditor
+                  code={selectedFile.content}
+                  language={selectedFile.language}
+                  filename={selectedFile.name}
+                  height={600}
+                  readonly={true}
+                />
+              ) : (
+                <Card className="h-[600px] flex items-center justify-center">
+                  <CardContent className="text-center">
+                    <FolderTree className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">
+                      Select a file from the tree to view its contents
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Artifact Header */}
       {hasArtifact && (
         <div className="space-y-4">
@@ -157,79 +257,7 @@ export function AIResponseRenderer({ response }: AIResponseRendererProps) {
         </div>
       )}
 
-      {/* File Tree and Code Editor */}
-      {hasFiles && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-950 border border-green-200 dark:border-green-800 flex items-center justify-center">
-              <FolderTree className="h-4 w-4 text-green-600 dark:text-green-400" />
-            </div>
-            <h3 className="font-semibold text-foreground">Project Files</h3>
-            <Badge variant="secondary" className="text-xs">
-              {parsedResponse.files.length} files
-            </Badge>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* File Tree */}
-            <Card className="lg:col-span-1">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">File Explorer</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-96">
-                  <div className="p-4">
-                    <Tree
-                      data={treeData}
-                      handleSelect={handleFileSelect}
-                      initialSelectedId={selectedFileId}
-                      expandAll={true}
-                    />
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            {/* Code Editor */}
-            <div className="lg:col-span-2">
-              {selectedFile ? (
-                <CodeEditor
-                  code={selectedFile.content}
-                  language={selectedFile.language}
-                  filename={selectedFile.name}
-                  height={400}
-                  readonly={true}
-                />
-              ) : (
-                <Card className="h-[400px] flex items-center justify-center">
-                  <CardContent className="text-center">
-                    <FolderTree className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">
-                      Select a file from the tree to view its contents
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Code Blocks */}
-      {hasCode && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-purple-100 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 flex items-center justify-center">
-              <Code2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-            </div>
-            <h3 className="font-semibold text-foreground">Code Examples</h3>
-            <Badge variant="secondary" className="text-xs">
-              {parsedResponse.codeBlocks.length} blocks
-            </Badge>
-          </div>
-          <CodeViewer codeBlocks={parsedResponse.codeBlocks} />
-        </div>
-      )}
+      {/* Code Blocks - Removed: Files are now shown only in the file tree + Monaco editor above */}
 
       {/* Code Review */}
       {hasReview && (

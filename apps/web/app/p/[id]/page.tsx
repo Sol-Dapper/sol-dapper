@@ -7,8 +7,6 @@ import { Button } from "../../../components/ui/button"
 import { Textarea } from "../../../components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Separator } from "../../../components/ui/separator"
-import { Badge } from "../../../components/ui/badge"
-import { ScrollArea } from "../../../components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { Navigation } from "../../../components/navigation"
 import { ProjectsSidebar } from "../../../components/ProjectsSidebar"
@@ -63,6 +61,7 @@ export default function ProjectPage(): JSX.Element {
   const [selectedModel, setSelectedModel] = useState<string>("gpt-4o")
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [streamingResponse, setStreamingResponse] = useState<string>("")
+  const [projectFiles, setProjectFiles] = useState<string>("")
 
   // Projects state for sidebar
   const [projects, setProjects] = useState<ProjectWithStatus[]>([])
@@ -93,6 +92,18 @@ export default function ProjectPage(): JSX.Element {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project, projectId, isGenerating])
+
+  // Extract and combine all files from project AI responses
+  useEffect(() => {
+    if (project && project.prompts) {
+      const allFiles = project.prompts
+        .filter(prompt => prompt.type === 'SYSTEM')
+        .map(prompt => prompt.content)
+        .join('\n\n')
+      
+      setProjectFiles(allFiles)
+    }
+  }, [project])
 
   const loadProject = useCallback(async (): Promise<void> => {
     try {
@@ -365,18 +376,18 @@ export default function ProjectPage(): JSX.Element {
       {/* Main Content */}
       <main className="flex-1 bg-background">
         <div className="mx-auto h-full w-full px-12 py-8">
-          <div className="grid h-full grid-cols-1 gap-8 md:grid-cols-[30%_70%]">
+          <div className="grid h-full grid-cols-1 gap-6 xl:grid-cols-[25%_75%]">
             {/* Left Column: Input */}
             <div className="flex min-h-0 flex-col">
               <Card className="h-full border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
                 <CardHeader className="pb-6">
-                  <CardTitle className="text-2xl mb-2">Continue Working</CardTitle>
-                  <p className="text-muted-foreground leading-relaxed">Ask questions, request changes, or add new features</p>
+                  <CardTitle className="text-xl mb-2">Continue Working</CardTitle>
+                  <p className="text-sm text-muted-foreground leading-relaxed">Ask questions, request changes, or add new features</p>
                 </CardHeader>
                 <Separator />
                 <CardContent className="space-y-6 pt-6">
                   <div>
-                    <Label htmlFor="prompt" className="mb-3 block text-base font-medium">
+                    <Label htmlFor="prompt" className="mb-3 block text-sm font-medium">
                       Your Message
                     </Label>
                     <Textarea
@@ -384,23 +395,23 @@ export default function ProjectPage(): JSX.Element {
                       placeholder="Ask a question, request changes, or add new features..."
                       value={newPrompt}
                       onChange={(e) => setNewPrompt(e.target.value)}
-                      className="min-h-[160px] resize-none text-base leading-relaxed"
+                      className="min-h-[120px] resize-none text-sm leading-relaxed"
                       disabled={isGenerating}
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="model" className="mb-3 block text-base font-medium">
+                    <Label htmlFor="model" className="mb-3 block text-sm font-medium">
                       AI Model
                     </Label>
                     <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isGenerating}>
-                      <SelectTrigger className="w-full h-12">
+                      <SelectTrigger className="w-full h-10">
                         <SelectValue placeholder="Select a model" />
                       </SelectTrigger>
                       <SelectContent>
                         {AVAILABLE_MODELS.map((model) => (
-                          <SelectItem key={model.value} value={model.value} className="py-3">
-                            <span className="font-medium">{model.label}</span>
+                          <SelectItem key={model.value} value={model.value} className="py-2">
+                            <span className="text-sm font-medium">{model.label}</span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -410,17 +421,17 @@ export default function ProjectPage(): JSX.Element {
                   <Button
                     onClick={handleSubmit}
                     disabled={!newPrompt.trim() || isGenerating}
-                    className="w-full h-14 text-lg font-medium bg-primary hover:bg-primary/90 border-0"
+                    className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90 border-0"
                     size="lg"
                   >
                     {isGenerating ? (
                       <>
-                        <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                         Generating...
                       </>
                     ) : (
                       <>
-                        <Send className="mr-3 h-6 w-6" />
+                        <Send className="mr-2 h-5 w-5" />
                         Send Message
                       </>
                     )}
@@ -429,87 +440,43 @@ export default function ProjectPage(): JSX.Element {
               </Card>
             </div>
 
-            {/* Right Column: AI Response + Conversation History */}
-            <div className="flex min-h-0 flex-col gap-8">
-              {/* AI Response */}
-              <Card className="min-h-0 flex-1 border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
-                <CardHeader className="pb-6">
-                  <CardTitle className="text-2xl mb-2">AI Response</CardTitle>
-                  <p className="text-muted-foreground leading-relaxed">Real-time AI responses and updates</p>
-                </CardHeader>
-                <Separator />
-                <CardContent className="min-h-0 h-full p-0">
-                  <ScrollArea className="h-full p-6">
-                    {streamingResponse ? (
-                      <AIResponseRenderer 
-                        response={streamingResponse} 
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <div className="text-center">
-                          <div className="mb-6 text-6xl text-muted-foreground">💬</div>
-                          <p className="text-muted-foreground leading-relaxed">AI response will appear here</p>
-                        </div>
+            {/* Right Column: AI Response with Enhanced File Display */}
+            <div className="flex min-h-0 flex-col">
+              {/* Current AI Response with Files */}
+              <Card className="min-h-0 h-full border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl mb-1">Project Files & Code Editor</CardTitle>
+                      <p className="text-sm text-muted-foreground">Browse and edit project files with Monaco editor - always available</p>
+                    </div>
+                    {isGenerating && (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span className="text-sm text-muted-foreground">Generating...</span>
                       </div>
                     )}
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-
-              {/* Conversation History */}
-              <Card className="min-h-0 flex-1 border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
-                <CardHeader className="pb-6">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-2xl mb-2">Conversation History</CardTitle>
-                    <Badge variant="secondary" className="px-3 py-1">{project?.prompts.length || 0} messages</Badge>
                   </div>
                 </CardHeader>
                 <Separator />
                 <CardContent className="min-h-0 h-full p-0">
-                  <ScrollArea className="h-full p-6">
-                    <div className="space-y-4">
-                      {project?.prompts.map((prompt) => (
-                        <Card
-                          key={prompt.id}
-                          className={`cursor-pointer rounded-xl transition-all hover:bg-muted/30 hover:shadow-md ${
-                            prompt.type === "USER" ? "ml-8" : "mr-8"
-                          }`}
-                          title="Click to use this as context"
-                          onClick={() =>
-                            setNewPrompt((prev) => (prev ? `${prev}\n\n${prompt.content}` : prompt.content))
-                          }
-                        >
-                          <CardContent className="p-5">
-                            <div className="mb-3 flex items-center justify-between">
-                              <Badge variant={prompt.type === "USER" ? "default" : "secondary"} className="text-sm px-3 py-1">
-                                {prompt.type === "USER" ? "👤 You" : "🤖 AI"}
-                              </Badge>
-                              <span className="text-sm text-muted-foreground">
-                                {new Date(prompt.createdAt).toLocaleTimeString()}
-                              </span>
-                            </div>
-                            {prompt.type === "SYSTEM" ? (
-                              <AIResponseRenderer 
-                                response={prompt.content} 
-                              />
-                            ) : (
-                              <pre className="whitespace-pre-wrap font-sans text-base leading-relaxed">
-                                {prompt.content}
-                              </pre>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-
-                      {project?.prompts.length === 0 && (
-                        <div className="py-12 text-center">
-                          <p className="text-muted-foreground leading-relaxed">
-                            No conversation yet. Start by sending a message!
-                          </p>
+                  <div className="h-full">
+                    {(projectFiles || streamingResponse) ? (
+                      <div className="h-full p-4">
+                        <AIResponseRenderer 
+                          response={streamingResponse ? `${projectFiles}\n\n${streamingResponse}` : projectFiles} 
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <div className="text-center">
+                          <div className="mb-6 text-6xl text-muted-foreground">📁</div>
+                          <h3 className="text-lg font-semibold mb-2">No Project Files Yet</h3>
+                          <p className="text-muted-foreground leading-relaxed">Generate your first AI response with code to see files appear in the file tree and Monaco editor</p>
                         </div>
-                      )}
-                    </div>
-                  </ScrollArea>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </div>

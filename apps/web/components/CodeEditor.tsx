@@ -178,8 +178,8 @@ export function CodeEditor({
         <div className="border-t">
           <Editor
             height={height}
-            defaultLanguage={language}
-            defaultValue={code}
+            language={language}
+            value={code}
             theme={getTheme()}
             onMount={handleEditorDidMount}
             onChange={onChange}

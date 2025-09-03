@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { ChevronDown, LogOut, Wallet, Mail, Shield, Zap, Menu, Code } from "lucide-react"
+import { ChevronDown, LogOut, Wallet, Mail, Shield, Menu, Zap } from "lucide-react"
 import Link from "next/link"
 
 interface User {
@@ -70,18 +70,7 @@ export function Navigation({ user, onLogout }: NavigationProps) {
           
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-4">
-            <Link href="/demo">
-              <Button variant="ghost" size="sm" className="gap-2 rounded-xl">
-                <Code className="h-4 w-4" />
-                Demo
-              </Button>
-            </Link>
-            <Link href="/builder">
-              <Button variant="ghost" size="sm" className="gap-2 rounded-xl">
-                <Zap className="h-4 w-4" />
-                Builder
-              </Button>
-            </Link>
+            {/* Demo and Builder routes removed - functionality integrated into main project page */}
           </nav>
         </div>
 
@@ -174,12 +163,7 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                 <div className="mt-6 space-y-6">
                   {/* Mobile Navigation Links */}
                   <div className="space-y-2">
-                    <Link href="/demo" onClick={() => setIsMobileOpen(false)}>
-                      <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl h-12">
-                        <Code className="h-5 w-5" />
-                        Demo
-                      </Button>
-                    </Link>
+                    {/* Demo and Builder routes removed - functionality integrated into main project page */}
                   </div>
                   
                   <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 border">
