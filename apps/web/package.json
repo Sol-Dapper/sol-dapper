@@ -11,6 +11,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@privy-io/react-auth": "^2.14.2",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -24,9 +25,11 @@
     "@repo/ui": "*",
     "@tabler/icons-react": "^3.34.1",
     "@tailwindcss/postcss": "^4.1.10",
+    "@webcontainer/api": "^1.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "ethers": "^6.14.4",
+    "fast-xml-parser": "^5.2.5",
     "lucide-react": "^0.515.0",
     "motion": "^12.23.12",
     "next": "^15.3.0",

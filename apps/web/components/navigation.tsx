@@ -1,6 +1,6 @@
  "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { ChevronDown, LogOut, Wallet, Mail, Shield, Zap, Menu } from "lucide-react"
+import { ChevronDown, LogOut, Wallet, Mail, Shield, Zap, Menu, Code } from "lucide-react"
+import Link from "next/link"
 
 interface User {
   id: string
@@ -59,11 +60,29 @@ export function Navigation({ user, onLogout }: NavigationProps) {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-16 w-full items-center justify-between px-12">
         {/* Logo */}
-        <div className="flex items-center gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
-            <Zap className="h-6 w-6 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Sol-Dapper</h1>
+        <div className="flex items-center gap-6">
+          <Link href="/" className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
+              <Zap className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">Sol-Dapper</h1>
+          </Link>
+          
+          {/* Navigation Links */}
+          <nav className="hidden md:flex items-center gap-4">
+            <Link href="/demo">
+              <Button variant="ghost" size="sm" className="gap-2 rounded-xl">
+                <Code className="h-4 w-4" />
+                Demo
+              </Button>
+            </Link>
+            <Link href="/builder">
+              <Button variant="ghost" size="sm" className="gap-2 rounded-xl">
+                <Zap className="h-4 w-4" />
+                Builder
+              </Button>
+            </Link>
+          </nav>
         </div>
 
         {/* Desktop User Menu */}
@@ -153,6 +172,16 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                   <SheetTitle className="text-left">Account</SheetTitle>
                 </SheetHeader>
                 <div className="mt-6 space-y-6">
+                  {/* Mobile Navigation Links */}
+                  <div className="space-y-2">
+                    <Link href="/demo" onClick={() => setIsMobileOpen(false)}>
+                      <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl h-12">
+                        <Code className="h-5 w-5" />
+                        Demo
+                      </Button>
+                    </Link>
+                  </div>
+                  
                   <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 border">
                     <Avatar className="h-12 w-12">
                       <AvatarFallback className="bg-primary text-primary-foreground font-semibold">

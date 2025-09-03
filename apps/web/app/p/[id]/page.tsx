@@ -2,7 +2,7 @@
 
 import { useParams, useSearchParams, useRouter } from "next/navigation"
 import { usePrivy } from "@privy-io/react-auth"
-import { useState, useEffect, type JSX } from "react"
+import { useState, useEffect, useCallback, type JSX } from "react"
 import { Button } from "../../../components/ui/button"
 import { Textarea } from "../../../components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
@@ -12,6 +12,7 @@ import { ScrollArea } from "../../../components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { Navigation } from "../../../components/navigation"
 import { ProjectsSidebar } from "../../../components/ProjectsSidebar"
+import { AIResponseRenderer } from "../../../components/AIResponseRenderer"
 import { Send, Loader2, AlertCircle, Calendar } from "lucide-react"
 import Link from "next/link"
 import { Label } from "../../../components/ui/label"
@@ -72,6 +73,7 @@ export default function ProjectPage(): JSX.Element {
       loadProject()
       loadProjects()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authenticated, projectId])
 
   // Handle initial AI generation from URL parameters
@@ -89,9 +91,10 @@ export default function ProjectPage(): JSX.Element {
         window.history.replaceState({}, '', `/p/${projectId}`)
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project, projectId, isGenerating])
 
-  const loadProject = async (): Promise<void> => {
+  const loadProject = useCallback(async (): Promise<void> => {
     try {
       setLoading(true)
       setError("")
@@ -119,9 +122,9 @@ export default function ProjectPage(): JSX.Element {
     } finally {
       setLoading(false)
     }
-  }
+  }, [projectId, getAccessToken])
 
-  const loadProjects = async (): Promise<void> => {
+  const loadProjects = useCallback(async (): Promise<void> => {
     setIsLoadingProjects(true)
     try {
       const token = await getAccessToken()
@@ -148,7 +151,7 @@ export default function ProjectPage(): JSX.Element {
     } finally {
       setIsLoadingProjects(false)
     }
-  }
+  }, [getAccessToken])
 
   const handleSubmit = async (): Promise<void> => {
     if (!newPrompt.trim() || isGenerating || !project) return
@@ -438,9 +441,9 @@ export default function ProjectPage(): JSX.Element {
                 <CardContent className="min-h-0 h-full p-0">
                   <ScrollArea className="h-full p-6">
                     {streamingResponse ? (
-                      <div className="rounded-2xl border border-border/30 bg-muted/20 p-6">
-                        <pre className="whitespace-pre-wrap font-sans text-base leading-relaxed">{streamingResponse}</pre>
-                      </div>
+                      <AIResponseRenderer 
+                        response={streamingResponse} 
+                      />
                     ) : (
                       <div className="flex h-full items-center justify-center">
                         <div className="text-center">
@@ -485,9 +488,15 @@ export default function ProjectPage(): JSX.Element {
                                 {new Date(prompt.createdAt).toLocaleTimeString()}
                               </span>
                             </div>
-                            <pre className="whitespace-pre-wrap font-sans text-base leading-relaxed">
-                              {prompt.content}
-                            </pre>
+                            {prompt.type === "SYSTEM" ? (
+                              <AIResponseRenderer 
+                                response={prompt.content} 
+                              />
+                            ) : (
+                              <pre className="whitespace-pre-wrap font-sans text-base leading-relaxed">
+                                {prompt.content}
+                              </pre>
+                            )}
                           </CardContent>
                         </Card>
                       ))}

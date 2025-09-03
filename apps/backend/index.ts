@@ -176,7 +176,7 @@ app.post("/chat", authMiddleware, async (req, res) => {
         { role: "system", content: BASE_PROMPT_REACT },
         { role: "user", content: userPrompt },
       ],
-      maxOutputTokens: 8000,
+      maxOutputTokens: 16000,
       temperature: 0.7,
     });
 

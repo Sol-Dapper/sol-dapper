@@ -1,20 +1,18 @@
 "use client"
 
-import { useState, useEffect, type JSX } from "react"
+import { useState, useEffect, useCallback, type JSX } from "react"
 import { usePrivy } from "@privy-io/react-auth"
 import { useRouter } from "next/navigation"
 import { Button } from "./ui/button"
 import { Textarea } from "./ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Separator } from "./ui/separator"
-import { Badge } from "./ui/badge"
 import { ScrollArea } from "./ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Label } from "./ui/label"
-import { Skeleton } from "./ui/skeleton"
-import { Send, Loader2, AlertCircle, History, Zap, RefreshCw, ExternalLink, Clock, CheckCircle, XCircle } from "lucide-react"
-import Link from "next/link"
+import { Send, Loader2, AlertCircle, Zap } from "lucide-react"
 import { ProjectsSidebar } from "./ProjectsSidebar"
+import { AIResponseRenderer } from "./AIResponseRenderer"
 
 interface Project {
   id: string
@@ -51,11 +49,7 @@ export function PromptInterface(): JSX.Element {
   const [error, setError] = useState<string>("")
   const [isLoadingProjects, setIsLoadingProjects] = useState<boolean>(false)
 
-  useEffect(() => {
-    loadProjects()
-  }, [])
-
-  const loadProjects = async (): Promise<void> => {
+  const loadProjects = useCallback(async (): Promise<void> => {
     setIsLoadingProjects(true)
     try {
       const token = await getAccessToken()
@@ -86,7 +80,11 @@ export function PromptInterface(): JSX.Element {
     } finally {
       setIsLoadingProjects(false)
     }
-  }
+  }, [getAccessToken])
+
+  useEffect(() => {
+    loadProjects()
+  }, [loadProjects])
 
   const handleSubmit = async (): Promise<void> => {
     if (!prompt.trim() || isGenerating) return
@@ -188,68 +186,29 @@ export function PromptInterface(): JSX.Element {
         reader.releaseLock()
       }
 
-      setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, status: "completed" as ProjectStatus } : p)))
+      setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, status: "generating" as ProjectStatus } : p)))
       
-      // Navigate to the project page after successful creation and generation
+      // Navigate to the project page with initial prompt and model for seamless continuation
+      setStreamingResponse((prev) => prev + "\n🔄 Redirecting to project page...")
       setTimeout(() => {
-        router.push(`/p/${projectId}`)
-      }, 1000) // Small delay to let user see the completion status
+        // Keep loading state active during navigation
+        router.push(`/p/${projectId}?initialPrompt=${encodeURIComponent(prompt)}&model=${selectedModel}`)
+      }, 500) // Reduced delay since loading continues on project page
+      
+      // Don't set isGenerating to false here - let the navigation handle it
+      return
     } catch (err) {
       console.error("Error in project creation:", err)
       setError(err instanceof Error ? err.message : "An unexpected error occurred")
-      setStreamingResponse("❌ Generation failed. Please try again.")
+      setStreamingRcuresponse("❌ Generation failed. Please try again.")
       setProjects((prev) => prev.map((p) => (p.id === tempProject.id ? { ...p, status: "error" as ProjectStatus } : p)))
-    } finally {
       setIsGenerating(false)
     }
 
     setPrompt("")
   }
 
-  const getStatusIcon = (status: ProjectStatus = "completed") => {
-    switch (status) {
-      case "creating":
-        return <Loader2 className="h-3 w-3 animate-spin text-amber-500" />
-      case "generating":
-        return <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-      case "completed":
-        return <CheckCircle className="h-3 w-3 text-green-500" />
-      case "error":
-        return <XCircle className="h-3 w-3 text-red-500" />
-      default:
-        return <CheckCircle className="h-3 w-3 text-muted-foreground" />
-    }
-  }
 
-  const getStatusColor = (status: ProjectStatus = "completed"): string => {
-    switch (status) {
-      case "creating":
-        return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
-      case "generating":
-        return "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"
-      case "completed":
-        return "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-300"
-      case "error":
-        return "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
-      default:
-        return "border-border bg-muted text-muted-foreground"
-    }
-  }
-
-  const getStatusText = (status: ProjectStatus = "completed"): string => {
-    switch (status) {
-      case "creating":
-        return "Creating"
-      case "generating":
-        return "Generating"
-      case "completed":
-        return "Ready"
-      case "error":
-        return "Failed"
-      default:
-        return "Unknown"
-    }
-  }
 
   return (
     <div className="min-h-[calc(100vh-100px)] bg-background">
@@ -372,13 +331,9 @@ export function PromptInterface(): JSX.Element {
                 <ScrollArea className="h-full">
                   <div className="p-8">
                     {streamingResponse ? (
-                      <div className="space-y-4">
-                        <div className="rounded-2xl border border-border/30 bg-muted/20 p-6">
-                          <pre className="whitespace-pre-wrap text-base font-mono leading-relaxed text-foreground">
-                            {streamingResponse}
-                          </pre>
-                        </div>
-                      </div>
+                      <AIResponseRenderer 
+                        response={streamingResponse} 
+                      />
                     ) : (
                       <div className="flex h-[350px] items-center justify-center">
                         <div className="text-center space-y-6">
