@@ -14,7 +14,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.post("/register", async (req, res) => {
+app.post("/api/register", async (req, res) => {
   try {
     const { privyUserId, email, walletAddress } = req.body;
 
@@ -43,7 +43,7 @@ app.post("/register", async (req, res) => {
   }
 });
 
-app.post("/project", authMiddleware, async (req, res) => {
+app.post("/api/project", authMiddleware, async (req, res) => {
   const { prompt } = req.body;
   const privyUserId = req.privyUserId!;
 
@@ -63,7 +63,7 @@ app.post("/project", authMiddleware, async (req, res) => {
   res.json({ project: project.id });
 });
 
-app.get("/projects", authMiddleware, async (req, res) => {
+app.get("/api/projects", authMiddleware, async (req, res) => {
   const privyUserId = req.privyUserId;
 
   const user = await prismaClient.user.findUnique({
@@ -82,7 +82,7 @@ app.get("/projects", authMiddleware, async (req, res) => {
   res.json(projects);
 });
 
-app.get("/project/:id", authMiddleware, async (req, res) => {
+app.get("/api/project/:id", authMiddleware, async (req, res) => {
   const { id: projectId } = req.params;
   const privyUserId = req.privyUserId;
 
@@ -118,7 +118,7 @@ app.get("/project/:id", authMiddleware, async (req, res) => {
   }
 });
 
-app.post("/chat", authMiddleware, async (req, res) => {
+app.post("/api/chat", authMiddleware, async (req, res) => {
   const { prompt: userPrompt, projectId, model = "gpt-4o" } = req.body;
   const privyUserId = req.privyUserId!;
   try {
@@ -216,7 +216,7 @@ app.post("/chat", authMiddleware, async (req, res) => {
   }
 });
 
-app.get("/boilerplate", async (req, res) => {
+app.get("/api/boilerplate", async (req, res) => {
   try {
     res.setHeader("Content-Type", "text/plain")
     const fullBoilerplate = `${basePrompt}\n\n${boilerplateComponents}`;

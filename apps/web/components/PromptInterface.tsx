@@ -58,7 +58,7 @@ export function PromptInterface(): JSX.Element {
         return
       }
 
-      const response = await fetch("http://localhost:3001/projects", {
+      const response = await fetch("http://localhost:3001/api/projects", {
         headers: {
           Authorization: token,
           "Content-Type": "application/json",
@@ -112,7 +112,7 @@ export function PromptInterface(): JSX.Element {
 
       setStreamingResponse("🚀 Initializing project creation...\n\n")
 
-      const projectResponse = await fetch("http://localhost:3001/project", {
+      const projectResponse = await fetch("http://localhost:3001/api/project", {
         method: "POST",
         headers: {
           Authorization: token,
@@ -147,7 +147,7 @@ export function PromptInterface(): JSX.Element {
         ),
       )
 
-      const chatResponse = await fetch("http://localhost:3001/chat", {
+      const chatResponse = await fetch("http://localhost:3001/api/chat", {
         method: "POST",
         headers: {
           Authorization: token,

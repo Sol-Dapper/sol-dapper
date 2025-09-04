@@ -6,7 +6,7 @@ export async function registerUser(userData: {
   walletAddress?: string;
 }) {
   try {
-    const response = await fetch(`${API_BASE_URL}/register`, {
+    const response = await fetch(`${API_BASE_URL}/api/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -30,7 +30,7 @@ export async function registerUser(userData: {
  */
 export async function fetchBoilerplateComponents(): Promise<string> {
   try {
-    const response = await fetch("http://localhost:3001/boilerplate", {
+    const response = await fetch("http://localhost:3001/api/boilerplate", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

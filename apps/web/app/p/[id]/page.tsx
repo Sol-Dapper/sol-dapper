@@ -118,7 +118,7 @@ export default function ProjectPage(): JSX.Element {
         setError("Failed to get authentication token")
         return
       }
-      const response = await fetch(`http://localhost:3001/project/${projectId}`, {
+      const response = await fetch(`http://localhost:3001/api/project/${projectId}`, {
         headers: {
           Authorization: token,
           "Content-Type": "application/json",
@@ -147,7 +147,7 @@ export default function ProjectPage(): JSX.Element {
         return
       }
 
-      const response = await fetch("http://localhost:3001/projects", {
+      const response = await fetch("http://localhost:3001/api/projects", {
         headers: {
           Authorization: token,
           "Content-Type": "application/json",
@@ -180,7 +180,7 @@ export default function ProjectPage(): JSX.Element {
         throw new Error("Failed to get authentication token")
       }
 
-      const chatResponse = await fetch("http://localhost:3001/chat", {
+      const chatResponse = await fetch("http://localhost:3001/api/chat", {
         method: "POST",
         headers: {
           Authorization: token,
@@ -241,7 +241,7 @@ export default function ProjectPage(): JSX.Element {
 
       setStreamingResponse("🚀 Initializing AI generation...\n\n")
 
-      const chatResponse = await fetch("http://localhost:3001/chat", {
+      const chatResponse = await fetch("http://localhost:3001/api/chat", {
         method: "POST",
         headers: {
           Authorization: token,

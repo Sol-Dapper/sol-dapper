@@ -86,7 +86,7 @@ export default function Home(): JSX.Element {
         return
       }
 
-      const response = await fetch("http://localhost:3001/projects", {
+      const response = await fetch("http://localhost:3001/api/projects", {
         headers: {
           Authorization: token,
           "Content-Type": "application/json",
@@ -133,7 +133,7 @@ export default function Home(): JSX.Element {
         throw new Error("Authentication required")
       }
 
-      const projectResponse = await fetch("http://localhost:3001/project", {
+      const projectResponse = await fetch("http://localhost:3001/api/project", {
         method: "POST",
         headers: {
           Authorization: token,
