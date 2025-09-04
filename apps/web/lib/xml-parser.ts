@@ -85,30 +85,57 @@ export class AIResponseParser {
   private parseForgeArtifactDirectly(response: string, result: ParsedResponse) {
     console.log('XML Parser - Starting forgeArtifact parsing');
     
-    // Extract forgeArtifact using flexible regex (handles attributes in any order)
-    const artifactRegex = /<forgeArtifact[^>]*>([\s\S]*?)<\/forgeArtifact>/gi;
-    const artifactMatch = artifactRegex.exec(response);
+    // Extract the entire forgeArtifact block including opening tag, content, and closing tag
+    let artifactRegex = /<forgeArtifact\s+([^>]*)>([\s\S]*?)<\/forgeArtifact>/gi;
+    let artifactMatch = artifactRegex.exec(response);
+    
+    // If not found, try HTML-encoded version
+    if (!artifactMatch) {
+      artifactRegex = /&lt;forgeArtifact\s+([^&gt;]*)&gt;([\s\S]*?)&lt;\/forgeArtifact&gt;/gi;
+      artifactMatch = artifactRegex.exec(response);
+    }
+    
+    // If still not found, try without closing tag (assume content goes to end)
+    if (!artifactMatch) {
+      artifactRegex = /<forgeArtifact\s+([^>]*)>([\s\S]*?)$/gi;
+      artifactMatch = artifactRegex.exec(response);
+    }
+    
+    // If still not found, try HTML-encoded without closing tag
+    if (!artifactMatch) {
+      artifactRegex = /&lt;forgeArtifact\s+([^&gt;]*)&gt;([\s\S]*?)$/gi;
+      artifactMatch = artifactRegex.exec(response);
+    }
     
     if (!artifactMatch) {
       console.log('XML Parser - No forgeArtifact found');
       return;
     }
 
-    const [fullMatch, artifactContent] = artifactMatch;
+    const fullMatch = artifactMatch[0] || '';
+    const attributes = artifactMatch[1] || '';
+    const artifactContent = artifactMatch[2] || '';
     
-    if (!artifactContent) {
-      console.log('XML Parser - No artifact content found');
-      return;
-    }
+    console.log('XML Parser - Found forgeArtifact:', { 
+      fullMatch: fullMatch.substring(0, 200) + '...',
+      attributes,
+      contentLength: artifactContent.length,
+      hasClosingTag: fullMatch.includes('</forgeArtifact>') || fullMatch.includes('&lt;/forgeArtifact&gt;')
+    });
     
-    // Extract id and title attributes separately to handle any order
-    const idMatch = fullMatch.match(/id=["']([^"']*)["']/i); 
-    const titleMatch = fullMatch.match(/title=["']([^"']*)["']/i); 
+    // Extract id and title from the opening tag attributes
+    const idMatch = attributes.match(/id=["']([^"']*)["']/i);
+    const titleMatch = attributes.match(/title=["']([^"']*)["']/i);
     
     const artifactId = (idMatch && idMatch[1]) || 'unknown';
     const title = (titleMatch && titleMatch[1]) || 'Untitled Project';
     
     console.log('XML Parser - Found forgeArtifact:', { artifactId, title });
+    
+    if (!artifactContent) {
+      console.log('XML Parser - No artifact content found');
+      return;
+    }
 
     // Set artifact metadata
     result.artifact = {
@@ -141,7 +168,12 @@ export class AIResponseParser {
       const filePath = filePathMatch ? filePathMatch[1] : '';
       const command = commandMatch ? commandMatch[1] : '';
       
-      console.log('XML Parser - Found forgeAction:', { type, filePath, command, contentLength: actionContent.length });
+      console.log('XML Parser - Found forgeArtifact:', { 
+        fullMatch: fullMatch.substring(0, 200) + '...',
+        attributes,
+        contentLength: artifactContent.length,
+        hasClosingTag: fullMatch.includes('</forgeArtifact>') || fullMatch.includes('&lt;/forgeArtifact&gt;')
+      });
 
       if (type === 'file' && filePath && actionContent) {
         // Handle file actions

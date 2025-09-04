@@ -25,13 +25,25 @@ export function parseForgeXml(response: string): Step[] {
     
     console.log('Parsing forge XML from response:', response);
     
-    // Extract the XML content between forgeArtifact tags (handle both regular and HTML-encoded)
-    let artifactRegex = /<forgeArtifact[^>]*>([\s\S]*?)<\/forgeArtifact>/gi;
+    // Extract the entire forgeArtifact block including opening tag, content, and closing tag
+    let artifactRegex = /<forgeArtifact\s+([^>]*)>([\s\S]*?)<\/forgeArtifact>/gi;
     let artifactMatch = artifactRegex.exec(response);
     
     // If not found, try HTML-encoded version
     if (!artifactMatch) {
-        artifactRegex = /&lt;forgeArtifact[^&gt;]*&gt;([\s\S]*?)&lt;\/forgeArtifact&gt;/gi;
+        artifactRegex = /&lt;forgeArtifact\s+([^&gt;]*)&gt;([\s\S]*?)&lt;\/forgeArtifact&gt;/gi;
+        artifactMatch = artifactRegex.exec(response);
+    }
+    
+    // If still not found, try without closing tag (assume content goes to end)
+    if (!artifactMatch) {
+        artifactRegex = /<forgeArtifact\s+([^>]*)>([\s\S]*?)$/gi;
+        artifactMatch = artifactRegex.exec(response);
+    }
+    
+    // If still not found, try HTML-encoded without closing tag
+    if (!artifactMatch) {
+        artifactRegex = /&lt;forgeArtifact\s+([^&gt;]*)&gt;([\s\S]*?)$/gi;
         artifactMatch = artifactRegex.exec(response);
     }
     
@@ -41,13 +53,19 @@ export function parseForgeXml(response: string): Step[] {
     }
         
     const fullMatch = artifactMatch[0] || '';
-    const content = artifactMatch[1] || '';
+    const attributes = artifactMatch[1] || '';
+    const content = artifactMatch[2] || '';
     
-    console.log('Found forgeArtifact:', { fullMatch: fullMatch.substring(0, 200) + '...', contentLength: content.length });
+    console.log('Found forgeArtifact:', { 
+        fullMatch: fullMatch.substring(0, 200) + '...', 
+        attributes,
+        contentLength: content.length,
+        hasClosingTag: fullMatch.includes('</forgeArtifact>') || fullMatch.includes('&lt;/forgeArtifact&gt;')
+    });
     
-    // Extract id and title attributes separately to handle any order (both quoted and unquoted)
-    const idMatch = fullMatch.match(/id=["']?([^"'\s>]*)["']?/i); 
-    const titleMatch = fullMatch.match(/title=["']?([^"'\s>]*)["']?/i); 
+    // Extract id and title attributes from the opening tag attributes
+    const idMatch = attributes.match(/id=["']([^"']*)["']/i); 
+    const titleMatch = attributes.match(/title=["']([^"']*)["']/i); 
     
     const artifactId: string = (idMatch && idMatch[1]) || 'unknown';
     const title: string = (titleMatch && titleMatch[1]) || 'Untitled Project';
