@@ -2,8 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "buildCommand": "bun run build --filter=web",
-  "devCommand": "bun run dev --filter=web",
+  "devCommand": "bun run dev --filter=web --port $PORT",
   "installCommand": "bun install",
   "framework": "nextjs",
-  "outputDirectory": "apps/web/.next"
+  "outputDirectory": "apps/web/.next",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./"
 }
