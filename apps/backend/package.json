@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "build": "bun build index.ts --outdir dist --target bun",
+    "start": "bun dist/index.js",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {
@@ -16,7 +16,7 @@
     "typescript": "^5"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "bun": ">=1.0.0"
   },
   "dependencies": {
     "@types/express": "^5.0.3",

@@ -5,7 +5,9 @@
   "devCommand": "cd ../.. && bun run dev --filter=backend", 
   "installCommand": "cd ../.. && bun install",
   "functions": {
-    "dist/index.js": {}
+    "dist/index.js": {
+      "runtime": "@vercel/bun"
+    }
   },
   "rewrites": [
     {
