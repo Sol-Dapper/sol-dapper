@@ -2,11 +2,17 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "buildCommand": "cd ../.. && bun run build --filter=backend",
-  "devCommand": "cd ../.. && bun run dev --filter=backend",
-  "installCommand": "bun install",
+  "devCommand": "cd ../.. && bun run dev --filter=backend", 
+  "installCommand": "cd ../.. && bun install",
   "functions": {
-    "index.ts": {
+    "dist/index.js": {
       "runtime": "nodejs20.x"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/dist/index.js"
+    }
+  ]
 }
