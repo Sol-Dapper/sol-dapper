@@ -4,6 +4,7 @@ import { authMiddleware } from "./middleware";
 import cors from "cors";
 import { basePrompt } from "./prompts/baseprompt";
 import { SYSTEM_PROMPT, BASE_PROMPT_REACT } from "./prompts/prompt";
+import { boilerplateComponents } from "./prompts/boilerplate-components";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { anthropic } from "@ai-sdk/anthropic";
@@ -212,6 +213,17 @@ app.post("/chat", authMiddleware, async (req, res) => {
   } catch (error) {
     console.error("Chat endpoint error:", error);
     res.status(500).json({ error: "Failed to generate response" });
+  }
+});
+
+app.get("/boilerplate", async (req, res) => {
+  try {
+    res.setHeader("Content-Type", "text/plain")
+    const fullBoilerplate = `${basePrompt}\n\n${boilerplateComponents}`;
+    res.send(fullBoilerplate);
+  } catch (error) {
+    console.error("Boilerplate endpoint error:", error);
+    res.status(500).json({ error: "Failed to get boilerplate components" });
   }
 });
 

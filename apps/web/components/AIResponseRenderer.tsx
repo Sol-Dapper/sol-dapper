@@ -4,39 +4,152 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Button } from '@/components/ui/button'
 
 import { 
-  FileText, 
   FolderTree, 
   CheckCircle, 
   AlertTriangle,
   Info,
   Zap,
-  Terminal
+  Terminal,
+  Download
 } from 'lucide-react'
 import { Tree, type TreeViewElement } from '@/components/ui/file-tree'
 import { CodeEditor } from '@/components/CodeEditor'
 import { AIResponseParser, type ParsedResponse, type ParsedFile } from '@/lib/xml-parser'
+import { fetchBoilerplateComponents } from '@/lib/api'
 
 interface AIResponseRendererProps {
   response: string
+  useBoilerplate?: boolean // Flag to enable/disable boilerplate integration
+  isStreaming?: boolean // Flag to indicate if response is being streamed
 }
 
-export function AIResponseRenderer({ response }: AIResponseRendererProps) {
+export function AIResponseRenderer({ response, useBoilerplate = true, isStreaming = false }: AIResponseRendererProps) {
   const [selectedFileId, setSelectedFileId] = useState<string>('')
   const [selectedFile, setSelectedFile] = useState<ParsedFile | null>(null)
   const [parsedResponse, setParsedResponse] = useState<ParsedResponse | null>(null)
+  const [boilerplateComponents, setBoilerplateComponents] = useState<string>('')
+  const [isLoadingBoilerplate, setIsLoadingBoilerplate] = useState<boolean>(false)
+  const [streamingFileContent, setStreamingFileContent] = useState<string>('')
+  const [boilerplateApplied, setBoilerplateApplied] = useState<boolean>(false)
   
   const parser = useMemo(() => new AIResponseParser(), [])
+
+  // Helper function to check if a file is from boilerplate
+  const isBoilerplateFile = (filePath: string): boolean => {
+    return filePath.includes('app-footer.tsx') || 
+           filePath.includes('wallet-button.tsx') ||
+           filePath.includes('cluster-data-access.tsx') ||
+           filePath.includes('cluster-ui.tsx') ||
+           filePath.includes('theme-select.tsx') ||
+           filePath.includes('tailwind.config.js') ||
+           filePath.includes('src/app/globals.css') ||
+           filePath.includes('package.json') ||
+           filePath.includes('tsconfig.json') ||
+           filePath.includes('next.config.ts') ||
+           filePath.includes('postcss.config.mjs') ||
+           filePath.includes('anchor/') ||
+           filePath.includes('src/app/layout.tsx') ||
+           filePath.includes('src/app/page.tsx') ||
+           filePath.includes('src/components/app-') ||
+           filePath.includes('src/components/solana/') ||
+           filePath.includes('src/components/react-query-provider.tsx') ||
+           filePath.includes('src/components/theme-provider.tsx')
+  }
+
+  // Fetch boilerplate components on mount
+  useEffect(() => {
+    if (useBoilerplate) {
+      setIsLoadingBoilerplate(true)
+      setBoilerplateApplied(false) // Reset when useBoilerplate changes
+      fetchBoilerplateComponents()
+        .then(components => {
+          setBoilerplateComponents(components)
+          console.log('AIResponseRenderer - Boilerplate components fetched:', components ? 'success' : 'empty')
+        })
+        .catch(error => {
+          console.error('AIResponseRenderer - Failed to fetch boilerplate:', error)
+          setBoilerplateComponents('') // Fallback to empty
+        })
+        .finally(() => {
+          setIsLoadingBoilerplate(false)
+        })
+    } else {
+      setBoilerplateApplied(false) // Reset when boilerplate is disabled
+    }
+  }, [useBoilerplate])
 
   useEffect(() => {
     if (response) {
       console.log('AIResponseRenderer - Input response:', response)
-      const parsed = parser.parseResponse(response)
-      console.log('AIResponseRenderer - Parsed response:', parsed)
+      
+      // Wait for boilerplate to load if needed
+      if (useBoilerplate && isLoadingBoilerplate) {
+        return // Wait for boilerplate to load
+      }
+      
+      let parsed: ParsedResponse
+      
+      if (useBoilerplate && boilerplateComponents && !boilerplateApplied) {
+        // First time: merge boilerplate with AI response
+        parsed = parser.parseResponseWithBoilerplate(response, boilerplateComponents)
+        setBoilerplateApplied(true)
+        console.log('AIResponseRenderer - Applied boilerplate for first time:', parsed)
+      } else if (boilerplateApplied && parsedResponse) {
+        // Subsequent updates: preserve boilerplate files and merge with new AI content
+        const aiResult = parser.parseResponse(response)
+        const existingFiles = parsedResponse.files.filter(file => isBoilerplateFile(file.path))
+        const existingDirs = parsedResponse.directories.filter(dir => isBoilerplateFile(dir.path))
+        
+        // Merge existing boilerplate files with new AI files
+        const mergedFiles = [...existingFiles]
+        const mergedDirs = [...existingDirs]
+        
+        // Add or update AI files
+        aiResult.files.forEach(aiFile => {
+          const existingIndex = mergedFiles.findIndex(f => f.path === aiFile.path)
+          if (existingIndex >= 0) {
+            mergedFiles[existingIndex] = aiFile
+          } else {
+            mergedFiles.push(aiFile)
+          }
+        })
+        
+        // Add new AI directories
+        aiResult.directories.forEach(aiDir => {
+          const existingIndex = mergedDirs.findIndex(d => d.path === aiDir.path)
+          if (existingIndex < 0) {
+            mergedDirs.push(aiDir)
+          }
+        })
+        
+        parsed = {
+          files: mergedFiles,
+          directories: mergedDirs,
+          codeBlocks: [...(parsedResponse.codeBlocks || []), ...aiResult.codeBlocks],
+          text: aiResult.text || parsedResponse.text,
+          review: aiResult.review || parsedResponse.review,
+          artifact: aiResult.artifact || parsedResponse.artifact,
+          steps: [...(parsedResponse.steps || []), ...(aiResult.steps || [])],
+        }
+        console.log('AIResponseRenderer - Preserved boilerplate and merged AI content:', {
+          totalFiles: parsed.files.length,
+          totalDirectories: parsed.directories.length,
+          boilerplateFiles: existingFiles.length,
+          aiFiles: aiResult.files.length,
+          aiDirectories: aiResult.directories.length
+        })
+      } else {
+        // Standard parsing (no boilerplate)
+        parsed = parser.parseResponse(response)
+        console.log('AIResponseRenderer - Standard parsing:', parsed)
+      }
+      
       setParsedResponse(parsed)
     }
-  }, [response, parser])
+  }, [response, parser, useBoilerplate, boilerplateComponents, isLoadingBoilerplate])
 
   // Automatically select the first file when files are available and no file is selected
   useEffect(() => {
@@ -83,6 +196,52 @@ export function AIResponseRenderer({ response }: AIResponseRendererProps) {
     }
   }, [parsedResponse, selectedFileId, selectedFile])
 
+  // Extract the streaming content for the selected file (LLM response only, not boilerplate)
+  useEffect(() => {
+    if (isStreaming && selectedFile && response) {
+      // Check if this file is from boilerplate (don't stream boilerplate files)
+      if (isBoilerplateFile(selectedFile.path)) {
+        // For boilerplate files, show content immediately without streaming
+        setStreamingFileContent(selectedFile.content)
+        return
+      }
+      
+      // For LLM-generated files, extract streaming content
+      const escapedPath = selectedFile.path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      
+      // Look for the file pattern, but be more flexible with incomplete responses
+      const fileStartPattern = new RegExp(`<forgeAction[^>]*filePath="${escapedPath}"[^>]*>`, 'i')
+      const fileStartMatch = response.match(fileStartPattern)
+      
+      if (fileStartMatch) {
+        const startIndex = response.indexOf(fileStartMatch[0]) + fileStartMatch[0].length
+        
+        // Find the end of this forgeAction (or end of response if incomplete)
+        const endPattern = /<\/forgeAction>/g
+        endPattern.lastIndex = startIndex
+        const endMatch = endPattern.exec(response)
+        
+        const endIndex = endMatch ? endMatch.index : response.length
+        
+        // Extract the content between start and end
+        const extractedContent = response.substring(startIndex, endIndex).trim()
+        
+        if (extractedContent && extractedContent !== streamingFileContent) {
+          setStreamingFileContent(extractedContent)
+        }
+      } else {
+        // If we can't find the file in the streaming response yet, 
+        // use the parsed file content if available
+        if (selectedFile.content && selectedFile.content !== streamingFileContent) {
+          setStreamingFileContent(selectedFile.content)
+        }
+      }
+    } else if (selectedFile && !isStreaming) {
+      // When not streaming, use the final file content
+      setStreamingFileContent(selectedFile.content)
+    }
+  }, [selectedFile, response, isStreaming, streamingFileContent])
+
   const treeData = useMemo(() => {
     if (!parsedResponse) return []
     
@@ -122,6 +281,95 @@ export function AIResponseRenderer({ response }: AIResponseRendererProps) {
     setSelectedFile(file)
   }
 
+  const downloadProject = async () => {
+    if (!parsedResponse || parsedResponse.files.length === 0) {
+      console.error('No files to download')
+      return
+    }
+
+    try {
+      // Import JSZip dynamically to avoid SSR issues
+      const JSZip = (await import('jszip')).default
+      const zip = new JSZip()
+
+      // Add each file to the zip
+      parsedResponse.files.forEach(file => {
+        // Create directory structure in zip
+        const filePath = file.path.startsWith('/') ? file.path.slice(1) : file.path
+        zip.file(filePath, file.content)
+      })
+
+      // Add a README.md with project information
+      const readme = `# Solana DApp Project
+
+This project was generated using AI and includes ${parsedResponse.files.length} files.
+
+## Getting Started
+
+1. Install dependencies:
+   \`\`\`bash
+   npm install
+   # or
+   bun install
+   \`\`\`
+
+2. Start the development server:
+   \`\`\`bash
+   npm run dev
+   # or
+   bun dev
+   \`\`\`
+
+3. Build for production:
+   \`\`\`bash
+   npm run build
+   # or
+   bun run build
+   \`\`\`
+
+## Generated Files
+
+This project includes:
+- Next.js application with TypeScript
+- Solana wallet integration
+- Anchor program setup
+- Tailwind CSS styling
+- Essential UI components
+
+Generated on: ${new Date().toISOString()}
+`
+      zip.file('README.md', readme)
+
+      // Generate the zip file
+      const content = await zip.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: {
+          level: 6
+        }
+      })
+      
+      // Create a more descriptive filename
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+      const filename = `solana-dapp-${timestamp}.zip`
+      
+      // Create download link
+      const url = URL.createObjectURL(content)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      console.log(`Project downloaded successfully as ${filename}`)
+    } catch (error) {
+      console.error('Error downloading project:', error)
+      // You could add a toast notification here to inform the user
+    }
+  }
+
   if (!parsedResponse) {
     return (
       <div className="space-y-4">
@@ -140,11 +388,36 @@ export function AIResponseRenderer({ response }: AIResponseRendererProps) {
   const hasReview = !!parsedResponse.review
   const hasArtifact = !!parsedResponse.artifact
   
+  // Check if boilerplate was applied
+  const hasBoilerplateFiles = parsedResponse.files.some(file => 
+    file.path.includes('app-footer.tsx') || 
+    file.path.includes('wallet-button.tsx') ||
+    file.path.includes('cluster-data-access.tsx') ||
+    file.path.includes('tailwind.config.js') ||
+    file.path.includes('src/app/globals.css') ||
+    file.path.includes('package.json')
+  )
+  
   console.log('AIResponseRenderer - hasFiles:', hasFiles, 'files:', parsedResponse.files.length, 'directories:', parsedResponse.directories.length)
   console.log('AIResponseRenderer - hasArtifact:', hasArtifact)
 
   return (
     <div className="space-y-6">
+      {/* Boilerplate Indicator */}
+      {hasBoilerplateFiles && useBoilerplate && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">Boilerplate Components Applied</h3>
+              <p className="text-sm text-muted-foreground">Essential Solana DApp components have been added to your project</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* File Tree and Code Editor - Prioritized at Top */}
       {hasFiles && (
         <div className="space-y-4">
@@ -156,6 +429,27 @@ export function AIResponseRenderer({ response }: AIResponseRendererProps) {
             <Badge variant="secondary" className="text-xs">
               {parsedResponse.files.length} files
             </Badge>
+            {isStreaming && parsedResponse.files.some(file => !isBoilerplateFile(file.path)) && (
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                  Generating...
+                </span>
+              </div>
+            )}
+            <div className="ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadProject}
+                className="flex items-center gap-2"
+                disabled={isStreaming}
+                title="Download all project files as a ZIP archive"
+              >
+                <Download className="h-4 w-4" />
+                Download Project
+              </Button>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
@@ -181,13 +475,27 @@ export function AIResponseRenderer({ response }: AIResponseRendererProps) {
             {/* Code Editor */}
             <div>
               {selectedFile ? (
-                <CodeEditor
-                  code={selectedFile.content}
-                  language={selectedFile.language}
-                  filename={selectedFile.name}
-                  height={600}
-                  readonly={true}
-                />
+                <div className="relative">
+                  {isStreaming && selectedFile && !isBoilerplateFile(selectedFile.path) && (
+                    <div className="absolute top-4 right-4 z-10">
+                      <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-1">
+                        <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                          AI Writing...
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <CodeEditor
+                    code={streamingFileContent || selectedFile.content}
+                    language={selectedFile.language}
+                    filename={selectedFile.name}
+                    height={600}
+                    readonly={false} // Make it editable
+                    isStreaming={isStreaming && !isBoilerplateFile(selectedFile.path)}
+                    streamingSpeed={10} // Characters per interval
+                  />
+                </div>
               ) : (
                 <Card className="h-[600px] flex items-center justify-center">
                   <CardContent className="text-center">
@@ -238,24 +546,7 @@ export function AIResponseRenderer({ response }: AIResponseRendererProps) {
         </div>
       )}
 
-      {/* Plain Text Response */}
-      {parsedResponse.text && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
-              <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <h3 className="font-semibold text-foreground">AI Response</h3>
-          </div>
-          <Card>
-            <CardContent className="p-6">
-              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                {parsedResponse.text}
-              </pre>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+
 
       {/* Code Blocks - Removed: Files are now shown only in the file tree + Monaco editor above */}
 

@@ -80,6 +80,80 @@ export class AIResponseParser {
   }
 
   /**
+   * Merge boilerplate components with AI response
+   * The boilerplate components will be parsed first, then the AI response will override/extend them
+   */
+  parseResponseWithBoilerplate(response: string, boilerplateComponents: string): ParsedResponse {
+    console.log('XML Parser - Merging boilerplate with AI response');
+    const boilerplateResult = this.parseResponse(boilerplateComponents);
+    const aiResult = this.parseResponse(response);
+    
+    console.log('XML Parser - Boilerplate parsed:', {
+      files: boilerplateResult.files.length,
+      directories: boilerplateResult.directories.length
+    });
+    
+    console.log('XML Parser - AI response parsed:', {
+      files: aiResult.files.length,
+      directories: aiResult.directories.length
+    });
+    
+    // Start with boilerplate files and directories
+    const mergedFiles: ParsedFile[] = [...boilerplateResult.files];
+    const mergedDirectories: ParsedFile[] = [...boilerplateResult.directories];
+    
+    // Override/add files from AI response
+    aiResult.files.forEach(aiFile => {
+      const existingIndex = mergedFiles.findIndex(f => f.path === aiFile.path);
+      if (existingIndex >= 0) {
+        // Override existing file
+        mergedFiles[existingIndex] = aiFile;
+        console.log('XML Parser - Overriding file:', aiFile.path);
+      } else {
+        // Add new file
+        mergedFiles.push(aiFile);
+        console.log('XML Parser - Adding new file:', aiFile.path);
+      }
+    });
+    
+    // Add directories from AI response (avoid duplicates)
+    aiResult.directories.forEach(aiDir => {
+      const existingIndex = mergedDirectories.findIndex(d => d.path === aiDir.path);
+      if (existingIndex >= 0) {
+        // Keep existing directory (boilerplate takes precedence for directory structure)
+        console.log('XML Parser - Keeping existing directory:', aiDir.path);
+      } else {
+        // Add new directory
+        mergedDirectories.push(aiDir);
+        console.log('XML Parser - Adding new directory:', aiDir.path);
+      }
+    });
+    
+    // Merge other properties
+    const mergedResult: ParsedResponse = {
+      files: mergedFiles,
+      directories: mergedDirectories,
+      codeBlocks: [...boilerplateResult.codeBlocks, ...aiResult.codeBlocks],
+      text: aiResult.text || boilerplateResult.text, // Prefer AI response text
+      review: aiResult.review, // Use AI review if present
+      artifact: aiResult.artifact || boilerplateResult.artifact, // Prefer AI artifact
+      steps: [...(boilerplateResult.steps || []), ...(aiResult.steps || [])],
+    };
+    
+    console.log('XML Parser - Merged result:', {
+      totalFiles: mergedResult.files.length,
+      totalDirectories: mergedResult.directories.length,
+      codeBlocks: mergedResult.codeBlocks.length,
+      preservedBoilerplateFiles: mergedResult.files.filter(f => 
+        boilerplateResult.files.some(bf => bf.path === f.path) && 
+        !aiResult.files.some(af => af.path === f.path)
+      ).length
+    });
+    
+    return mergedResult;
+  }
+
+  /**
    * Parse forgeArtifact directly from raw text using regex
    */
   private parseForgeArtifactDirectly(response: string, result: ParsedResponse) {
@@ -187,7 +261,7 @@ export class AIResponseParser {
           const existingDir = result.directories.find(d => d.path === dirPath);
           if (!existingDir) {
             const parsedDir: ParsedFile = {
-              id: `forge-dir-${dirPath.replace(/[^a-zA-Z0-9]/g, '-')}`,
+              id: `dir-${dirPath.replace(/[^a-zA-Z0-9]/g, '-')}`,
               name: dirName,
               path: dirPath,
               content: '',
@@ -200,16 +274,31 @@ export class AIResponseParser {
           }
         });
         
-        const parsedFile: ParsedFile = {
-          id: `forge-file-${fileIndex++}`,
-          name: fileName,
-          path: filePath,
-          content: content,
-          language: this.detectLanguage(fileName),
-        };
-        
-        console.log('XML Parser - Adding file:', parsedFile);
-        result.files.push(parsedFile);
+        // Check if file already exists (handle duplicates)
+        const existingFileIndex = result.files.findIndex(f => f.path === filePath);
+        if (existingFileIndex >= 0) {
+          // Update existing file (later files override earlier ones)
+          result.files[existingFileIndex] = {
+            id: `forge-file-${fileIndex++}`,
+            name: fileName,
+            path: filePath,
+            content: content,
+            language: this.detectLanguage(fileName),
+          };
+          console.log('XML Parser - Updating existing file:', filePath);
+        } else {
+          // Add new file
+          const parsedFile: ParsedFile = {
+            id: `forge-file-${fileIndex++}`,
+            name: fileName,
+            path: filePath,
+            content: content,
+            language: this.detectLanguage(fileName),
+          };
+          
+          console.log('XML Parser - Adding new file:', parsedFile);
+          result.files.push(parsedFile);
+        }
 
         // Also add as code block for display
         result.codeBlocks.push({
@@ -239,12 +328,45 @@ export class AIResponseParser {
       }
     }
     
+    // Final deduplication step
+    result.files = this.deduplicateFiles(result.files);
+    result.directories = this.deduplicateDirectories(result.directories);
+    
     console.log('XML Parser - Completed parsing:', {
       filesFound: result.files.length,
       directoriesFound: result.directories.length,
       codeBlocks: result.codeBlocks.length,
       shellCommands: result.artifact?.shellCommands.length || 0
     });
+  }
+
+  /**
+   * Deduplicate files by path, keeping the last occurrence
+   */
+  private deduplicateFiles(files: ParsedFile[]): ParsedFile[] {
+    const fileMap = new Map<string, ParsedFile>();
+    files.forEach(file => {
+      fileMap.set(file.path, file);
+    });
+    return Array.from(fileMap.values());
+  }
+
+  /**
+   * Deduplicate directories by path, keeping the last occurrence
+   */
+  private deduplicateDirectories(directories: ParsedFile[]): ParsedFile[] {
+    const dirMap = new Map<string, ParsedFile>();
+    directories.forEach(dir => {
+      const existing = dirMap.get(dir.path);
+      if (!existing) {
+        // Use consistent ID format for directories
+        dirMap.set(dir.path, {
+          ...dir,
+          id: `dir-${dir.path.replace(/[^a-zA-Z0-9]/g, '-')}`
+        });
+      }
+    });
+    return Array.from(dirMap.values());
   }
 
   /**

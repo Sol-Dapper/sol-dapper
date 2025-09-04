@@ -20,6 +20,8 @@ interface CodeEditorProps {
   showHeader?: boolean
   showActions?: boolean
   onChange?: (value: string | undefined) => void
+  isStreaming?: boolean 
+  streamingSpeed?: number 
 }
 
 export function CodeEditor({
@@ -33,8 +35,74 @@ export function CodeEditor({
   showHeader = true,
   showActions = true,
   onChange,
+  isStreaming = false,
+  streamingSpeed = 5,
 }: CodeEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
+  const [displayedCode, setDisplayedCode] = React.useState('')
+  const [isStreamingActive, setIsStreamingActive] = React.useState(false)
+  const streamingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [showTypingCursor, setShowTypingCursor] = React.useState(false)
+
+  // Handle streaming effect
+  React.useEffect(() => {
+    if (isStreaming && code && code !== displayedCode) {
+      setIsStreamingActive(true)
+      setShowTypingCursor(true)
+      let currentIndex = displayedCode.length
+      
+      if (streamingIntervalRef.current) {
+        clearInterval(streamingIntervalRef.current)
+      }
+      
+      streamingIntervalRef.current = setInterval(() => {
+        if (currentIndex >= code.length) {
+          clearInterval(streamingIntervalRef.current!)
+          streamingIntervalRef.current = null
+          setIsStreamingActive(false)
+          setShowTypingCursor(false)
+          setDisplayedCode(code)
+          return
+        }
+        
+        const nextIndex = Math.min(currentIndex + streamingSpeed, code.length)
+        setDisplayedCode(code.substring(0, nextIndex))
+        currentIndex = nextIndex
+        
+        // Auto-scroll to bottom during streaming
+        if (editorRef.current) {
+          const lineCount = editorRef.current.getModel()?.getLineCount() || 0
+          editorRef.current.revealLine(lineCount)
+        }
+      }, 50) // Update every 50ms
+      
+      return () => {
+        if (streamingIntervalRef.current) {
+          clearInterval(streamingIntervalRef.current)
+          streamingIntervalRef.current = null
+        }
+      }
+    } else if (!isStreaming) {
+      // If not streaming, just set the code directly
+      setDisplayedCode(code)
+      setIsStreamingActive(false)
+      setShowTypingCursor(false)
+    }
+  }, [code, isStreaming, streamingSpeed, displayedCode])
+
+  // Clean up on unmount
+  React.useEffect(() => {
+    return () => {
+      if (streamingIntervalRef.current) {
+        clearInterval(streamingIntervalRef.current)
+      }
+    }
+  }, [])
+
+  // Add typing cursor effect
+  const displayCodeWithCursor = showTypingCursor && isStreamingActive 
+    ? displayedCode + '█' 
+    : displayedCode
 
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor, monaco: Monaco) => {
     editorRef.current = editor
@@ -83,7 +151,7 @@ export function CodeEditor({
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(code)
+      await navigator.clipboard.writeText(displayedCode)
       // You could add a toast notification here
     } catch (err) {
       console.error('Failed to copy code:', err)
@@ -91,7 +159,7 @@ export function CodeEditor({
   }
 
   const downloadFile = () => {
-    const blob = new Blob([code], { type: 'text/plain' })
+    const blob = new Blob([displayedCode], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -179,7 +247,7 @@ export function CodeEditor({
           <Editor
             height={height}
             language={language}
-            value={code}
+            value={displayCodeWithCursor} // Use displayedCode for the editor's value
             theme={getTheme()}
             onMount={handleEditorDidMount}
             onChange={onChange}

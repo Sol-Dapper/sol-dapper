@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Navigation } from "../../../components/navigation"
 import { ProjectsSidebar } from "../../../components/ProjectsSidebar"
 import { AIResponseRenderer } from "../../../components/AIResponseRenderer"
-import { Send, Loader2, AlertCircle, Calendar } from "lucide-react"
+import { Send, Loader2, AlertCircle, Calendar, Zap } from "lucide-react"
 import Link from "next/link"
 import { Label } from "../../../components/ui/label"
 
@@ -66,6 +66,7 @@ export default function ProjectPage(): JSX.Element {
   // Projects state for sidebar
   const [projects, setProjects] = useState<ProjectWithStatus[]>([])
   const [isLoadingProjects, setIsLoadingProjects] = useState<boolean>(false)
+  const [isFirstResponse, setIsFirstResponse] = useState<boolean>(true) // Track if this is the first response
 
   useEffect(() => {
     if (authenticated && projectId) {
@@ -96,12 +97,15 @@ export default function ProjectPage(): JSX.Element {
   // Extract and combine all files from project AI responses
   useEffect(() => {
     if (project && project.prompts) {
-      const allFiles = project.prompts
-        .filter(prompt => prompt.type === 'SYSTEM')
+      const systemPrompts = project.prompts.filter(prompt => prompt.type === 'SYSTEM')
+      const allFiles = systemPrompts
         .map(prompt => prompt.content)
         .join('\n\n')
       
       setProjectFiles(allFiles)
+      
+      // Determine if this is the first response based on existing system prompts
+      setIsFirstResponse(systemPrompts.length === 0)
     }
   }, [project])
 
@@ -465,6 +469,8 @@ export default function ProjectPage(): JSX.Element {
                       <div className="h-full p-4">
                         <AIResponseRenderer 
                           response={streamingResponse ? `${projectFiles}\n\n${streamingResponse}` : projectFiles} 
+                          useBoilerplate={isFirstResponse && !projectFiles && !!streamingResponse}
+                          isStreaming={isGenerating && !!streamingResponse}
                         />
                       </div>
                     ) : (

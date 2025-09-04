@@ -1,5 +1,5 @@
 export const basePrompt = `<forgeArtifact id="solana-project-import" title="Solana DApp Project Files"><forgeAction type="file" filePath="package.json">{
-    "name": "solana-dapp-counter",
+    "name": "solana-dapp",
     "version": "0.1.0",
     "private": true,
     "scripts": {
@@ -14,12 +14,15 @@ export const basePrompt = `<forgeArtifact id="solana-project-import" title="Sola
     },
     "dependencies": {
       "@coral-xyz/anchor": "^0.30.1",
+      "@radix-ui/react-select": "^2.0.0",
+      "@radix-ui/react-slot": "^1.0.2",
       "@solana/wallet-adapter-base": "^0.9.23",
       "@solana/wallet-adapter-react": "^0.15.35",
       "@solana/wallet-adapter-react-ui": "^0.9.35",
       "@solana/wallet-adapter-wallets": "^0.19.32",
       "@solana/web3.js": "^1.95.2",
       "@tanstack/react-query": "^5.51.23",
+      "jotai": "^2.8.0",
       "class-variance-authority": "^0.7.0",
       "clsx": "^2.1.1",
       "lucide-react": "^0.427.0",

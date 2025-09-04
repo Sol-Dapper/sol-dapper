@@ -24,3 +24,26 @@ export async function registerUser(userData: {
     throw error;
   }
 }
+
+/**
+ * Fetch boilerplate components that should be created before each project
+ */
+export async function fetchBoilerplateComponents(): Promise<string> {
+  try {
+    const response = await fetch("http://localhost:3001/boilerplate", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch boilerplate: ${response.statusText}`);
+    }
+
+    return await response.text();
+  } catch (error) {
+    console.error("Error fetching boilerplate components:", error);
+    return ""; // Return empty string as fallback
+  }
+}

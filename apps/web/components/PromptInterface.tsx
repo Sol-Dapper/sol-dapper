@@ -200,7 +200,7 @@ export function PromptInterface(): JSX.Element {
     } catch (err) {
       console.error("Error in project creation:", err)
       setError(err instanceof Error ? err.message : "An unexpected error occurred")
-      setStreamingRcuresponse("❌ Generation failed. Please try again.")
+      setStreamingResponse("❌ Generation failed. Please try again.")
       setProjects((prev) => prev.map((p) => (p.id === tempProject.id ? { ...p, status: "error" as ProjectStatus } : p)))
       setIsGenerating(false)
     }
@@ -333,6 +333,8 @@ export function PromptInterface(): JSX.Element {
                     {streamingResponse ? (
                       <AIResponseRenderer 
                         response={streamingResponse} 
+                        useBoilerplate={true} // Always use boilerplate for new projects
+                        isStreaming={isGenerating}
                       />
                     ) : (
                       <div className="flex h-[350px] items-center justify-center">
