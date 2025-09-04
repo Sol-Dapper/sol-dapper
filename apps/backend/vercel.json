@@ -5,9 +5,7 @@
   "devCommand": "cd ../.. && bun run dev --filter=backend", 
   "installCommand": "cd ../.. && bun install",
   "functions": {
-    "dist/index.js": {
-      "runtime": "nodejs20.x"
-    }
+    "dist/index.js": {}
   },
   "rewrites": [
     {

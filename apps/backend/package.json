@@ -15,6 +15,9 @@
   "peerDependencies": {
     "typescript": "^5"
   },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "@types/express": "^5.0.3",
     "express": "^5.1.0",
