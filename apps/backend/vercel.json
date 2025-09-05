@@ -1,7 +1,7 @@
 {
   "version": 2,
   "name": "my-backend",
-  "buildCommand": "bun install && bun run build",
+  "buildCommand": "cp -r ../../packages ./packages && bun install && bun run build",
   "devCommand": "bun run dev",
   "installCommand": "bun install",
   "framework": null,
