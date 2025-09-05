@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "bun run build",
+  "installCommand": "bun install && bun run db:generate",
   "builds": [
     {
       "src": "index.ts",
@@ -11,5 +13,8 @@
       "src": "/(.*)",
       "dest": "/index.ts"
     }
-  ]
+  ],
+  "env": {
+    "PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK": "1"
+  }
 }

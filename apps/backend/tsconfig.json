@@ -13,8 +13,13 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/db/*": ["../packages/db/*"],
+      "@/lib/*": ["./lib/*"]
+    }
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "../packages/db/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
