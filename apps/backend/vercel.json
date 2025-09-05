@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "bun run build",
-  "installCommand": "bun install && bun run db:generate",
+  "buildCommand": "cp -r ../packages/db ./packages/db && bun install && bun run db:generate && bun run build",
+  "installCommand": "bun install",
   "builds": [
     {
       "src": "index.ts",
