@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "db:generate": "prisma generate",
+    "postinstall": "prisma generate",
     "build": "bun run db:generate && bun build index.ts --outdir dist --target bun",
     "start": "bun dist/index.js",
     "dev": "bun --watch index.ts"
@@ -23,6 +24,6 @@
     "prisma": "^6.15.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "bun": ">=1.0.0"
   }
 }
