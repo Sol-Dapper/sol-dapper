@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "name": "backend",
-  "buildCommand": "cp -r ../../packages ./packages && bun install && bunx prisma generate --schema=./packages/db/prisma/schema.prisma && bun run build",
+  "name": "my-backend",
+  "buildCommand": "bun install && bun run build",
   "devCommand": "bun run dev",
   "installCommand": "bun install",
   "framework": null,
