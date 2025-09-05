@@ -9,6 +9,7 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { anthropic } from "@ai-sdk/anthropic";
 
+const PORT = process.env.PORT || 3001;
 const app = express();
 
 app.use(cors());
@@ -227,6 +228,6 @@ app.get("/api/boilerplate", async (req, res) => {
   }
 });
 
-app.listen(3001, () => {
+app.listen(PORT, () => {
   console.log("Server started on port 3001");
 });
