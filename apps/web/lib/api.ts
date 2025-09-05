@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export async function registerUser(userData: {
   privyUserId: string;
@@ -30,7 +30,7 @@ export async function registerUser(userData: {
  */
 export async function fetchBoilerplateComponents(): Promise<string> {
   try {
-    const response = await fetch("http://localhost:3001/api/boilerplate", {
+    const response = await fetch(`${API_BASE_URL}/api/boilerplate`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

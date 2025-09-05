@@ -13,6 +13,7 @@ import { Label } from "./ui/label"
 import { Send, Loader2, AlertCircle, Zap } from "lucide-react"
 import { ProjectsSidebar } from "./ProjectsSidebar"
 import { AIResponseRenderer } from "./AIResponseRenderer"
+import { API_BASE_URL } from "../lib/api"
 
 interface Project {
   id: string
@@ -58,7 +59,7 @@ export function PromptInterface(): JSX.Element {
         return
       }
 
-      const response = await fetch("http://localhost:3001/api/projects", {
+      const response = await fetch(`${API_BASE_URL}/api/projects`, {
         headers: {
           Authorization: token,
           "Content-Type": "application/json",
@@ -112,7 +113,7 @@ export function PromptInterface(): JSX.Element {
 
       setStreamingResponse("🚀 Initializing project creation...\n\n")
 
-      const projectResponse = await fetch("http://localhost:3001/api/project", {
+      const projectResponse = await fetch(`${API_BASE_URL}/api/project`, {
         method: "POST",
         headers: {
           Authorization: token,
@@ -147,7 +148,7 @@ export function PromptInterface(): JSX.Element {
         ),
       )
 
-      const chatResponse = await fetch("http://localhost:3001/api/chat", {
+      const chatResponse = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
         headers: {
           Authorization: token,

@@ -10,7 +10,7 @@ import { Navigation } from "../components/navigation"
 import { ProjectsSidebar } from "../components/ProjectsSidebar"
 import { LoginForm } from "../components/login-form"
 import { type JSX, useEffect, useState, useCallback } from "react"
-import { registerUser } from "../lib/api"
+import { registerUser, API_BASE_URL } from "../lib/api"
 import { useRouter } from "next/navigation"
 import { Zap, Send, Loader2, AlertCircle } from "lucide-react"
 
@@ -86,7 +86,7 @@ export default function Home(): JSX.Element {
         return
       }
 
-      const response = await fetch("http://localhost:3001/api/projects", {
+      const response = await fetch(`${API_BASE_URL}/api/projects`, {
         headers: {
           Authorization: token,
           "Content-Type": "application/json",
@@ -133,7 +133,7 @@ export default function Home(): JSX.Element {
         throw new Error("Authentication required")
       }
 
-      const projectResponse = await fetch("http://localhost:3001/api/project", {
+      const projectResponse = await fetch(`${API_BASE_URL}/api/project`, {
         method: "POST",
         headers: {
           Authorization: token,

@@ -14,6 +14,7 @@ import { AIResponseRenderer } from "../../../components/AIResponseRenderer"
 import { Send, Loader2, AlertCircle, Calendar, Zap } from "lucide-react"
 import Link from "next/link"
 import { Label } from "../../../components/ui/label"
+import { API_BASE_URL } from "../../../lib/api"
 
 interface Prompt {
   id: string
@@ -118,7 +119,7 @@ export default function ProjectPage(): JSX.Element {
         setError("Failed to get authentication token")
         return
       }
-      const response = await fetch(`http://localhost:3001/api/project/${projectId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/project/${projectId}`, {
         headers: {
           Authorization: token,
           "Content-Type": "application/json",
@@ -147,7 +148,7 @@ export default function ProjectPage(): JSX.Element {
         return
       }
 
-      const response = await fetch("http://localhost:3001/api/projects", {
+      const response = await fetch(`${API_BASE_URL}/api/projects`, {
         headers: {
           Authorization: token,
           "Content-Type": "application/json",
@@ -180,7 +181,7 @@ export default function ProjectPage(): JSX.Element {
         throw new Error("Failed to get authentication token")
       }
 
-      const chatResponse = await fetch("http://localhost:3001/api/chat", {
+      const chatResponse = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
         headers: {
           Authorization: token,
@@ -241,7 +242,7 @@ export default function ProjectPage(): JSX.Element {
 
       setStreamingResponse("🚀 Initializing AI generation...\n\n")
 
-      const chatResponse = await fetch("http://localhost:3001/api/chat", {
+      const chatResponse = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
         headers: {
           Authorization: token,
