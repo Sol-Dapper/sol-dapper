@@ -1,5 +1,5 @@
 import express from "express";
-import { prismaClient } from "db";
+import { prismaClient } from "prisma";
 import { authMiddleware } from "./middleware";
 import cors from "cors";
 import { basePrompt } from "./prompts/baseprompt";
