@@ -336,6 +336,7 @@ export function PromptInterface(): JSX.Element {
                         response={streamingResponse} 
                         useBoilerplate={true} // Always use boilerplate for new projects
                         isStreaming={isGenerating}
+                        hasExistingProject={false} // Always new projects in PromptInterface
                       />
                     ) : (
                       <div className="flex h-[350px] items-center justify-center">

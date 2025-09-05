@@ -279,7 +279,7 @@ export class AIResponseParser {
         if (existingFileIndex >= 0) {
           // Update existing file (later files override earlier ones)
           result.files[existingFileIndex] = {
-            id: `forge-file-${fileIndex++}`,
+            id: `file-${filePath.replace(/[^a-zA-Z0-9]/g, '-')}`,
             name: fileName,
             path: filePath,
             content: content,
@@ -289,7 +289,7 @@ export class AIResponseParser {
         } else {
           // Add new file
           const parsedFile: ParsedFile = {
-            id: `forge-file-${fileIndex++}`,
+            id: `file-${filePath.replace(/[^a-zA-Z0-9]/g, '-')}`,
             name: fileName,
             path: filePath,
             content: content,
@@ -300,13 +300,16 @@ export class AIResponseParser {
           result.files.push(parsedFile);
         }
 
-        // Also add as code block for display
-        result.codeBlocks.push({
-          id: `forge-code-${fileIndex}`,
-          language: this.detectLanguage(fileName),
-          content: content,
-          filename: filePath,
-        });
+        // Also add as code block for display (check for duplicates)
+        const existingCodeBlock = result.codeBlocks.find(cb => cb.filename === filePath);
+        if (!existingCodeBlock) {
+          result.codeBlocks.push({
+            id: `code-${filePath.replace(/[^a-zA-Z0-9]/g, '-')}`,
+            language: this.detectLanguage(fileName),
+            content: content,
+            filename: filePath,
+          });
+        }
 
       } else if ((type === 'shell' || type === 'command') && (command || actionContent)) {
         // Handle shell commands
@@ -315,13 +318,17 @@ export class AIResponseParser {
           console.log('XML Parser - Adding shell command:', commandText);
           result.artifact!.shellCommands.push(commandText);
           
-          // Also add as code block for display
-          result.codeBlocks.push({
-            id: `forge-shell-${shellIndex++}`,
-            language: 'bash',
-            content: commandText,
-            filename: 'shell-commands.sh',
-          });
+          // Also add as code block for display (avoid duplicates)
+          const shellCodeBlockId = `shell-${shellIndex++}`;
+          const existingShellBlock = result.codeBlocks.find(cb => cb.content === commandText && cb.language === 'bash');
+          if (!existingShellBlock) {
+            result.codeBlocks.push({
+              id: shellCodeBlockId,
+              language: 'bash',
+              content: commandText,
+              filename: 'shell-commands.sh',
+            });
+          }
         }
       } else {
         console.log('XML Parser - Unhandled action type or missing data:', { type, filePath, command, hasContent: !!actionContent });
@@ -346,7 +353,20 @@ export class AIResponseParser {
   private deduplicateFiles(files: ParsedFile[]): ParsedFile[] {
     const fileMap = new Map<string, ParsedFile>();
     files.forEach(file => {
-      fileMap.set(file.path, file);
+      const existing = fileMap.get(file.path);
+      if (!existing) {
+        // Use consistent ID format for files
+        fileMap.set(file.path, {
+          ...file,
+          id: `file-${file.path.replace(/[^a-zA-Z0-9]/g, '-')}`
+        });
+      } else {
+        // Update existing file with new content but keep consistent ID
+        fileMap.set(file.path, {
+          ...file,
+          id: existing.id // Keep the existing ID to prevent key conflicts
+        });
+      }
     });
     return Array.from(fileMap.values());
   }

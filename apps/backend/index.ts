@@ -12,7 +12,25 @@ import { anthropic } from "@ai-sdk/anthropic";
 const PORT = process.env.PORT || 3001;
 const app = express();
 
-app.use(cors());
+// Configure CORS for streaming and cross-origin requests
+app.use(cors({
+  origin: [
+    'http://localhost:3000', 
+    /\.vercel\.app$/, 
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'Cache-Control',
+    'Accept',
+    'Accept-Encoding',
+    'Connection'
+  ],
+  exposedHeaders: ['Content-Type', 'Transfer-Encoding']
+}));
+
 app.use(express.json());
 
 app.post("/api/register", async (req, res) => {
@@ -190,8 +208,13 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
       },
     });
 
+    // Set streaming headers with CORS support
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
 
     let fullResponse = "";
 

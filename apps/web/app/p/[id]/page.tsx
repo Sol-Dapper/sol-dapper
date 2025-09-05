@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Navigation } from "../../../components/navigation"
 import { ProjectsSidebar } from "../../../components/ProjectsSidebar"
 import { AIResponseRenderer } from "../../../components/AIResponseRenderer"
-import { Send, Loader2, AlertCircle, Calendar, Zap } from "lucide-react"
+import { Send, Loader2, AlertCircle, Calendar } from "lucide-react"
 import Link from "next/link"
 import { Label } from "../../../components/ui/label"
 import { API_BASE_URL } from "../../../lib/api"
@@ -472,6 +472,7 @@ export default function ProjectPage(): JSX.Element {
                           response={streamingResponse ? `${projectFiles}\n\n${streamingResponse}` : projectFiles} 
                           useBoilerplate={isFirstResponse && !projectFiles && !!streamingResponse}
                           isStreaming={isGenerating && !!streamingResponse}
+                          hasExistingProject={!!projectFiles && !isFirstResponse}
                         />
                       </div>
                     ) : (

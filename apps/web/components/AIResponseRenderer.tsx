@@ -24,9 +24,10 @@ interface AIResponseRendererProps {
   response: string
   useBoilerplate?: boolean // Flag to enable/disable boilerplate integration
   isStreaming?: boolean // Flag to indicate if response is being streamed
+  hasExistingProject?: boolean // Flag to indicate if this is an existing project with files
 }
 
-export function AIResponseRenderer({ response, useBoilerplate = true, isStreaming = false }: AIResponseRendererProps) {
+export function AIResponseRenderer({ response, useBoilerplate = true, isStreaming = false, hasExistingProject = false }: AIResponseRendererProps) {
   const [selectedFileId, setSelectedFileId] = useState<string>('')
   const [selectedFile, setSelectedFile] = useState<ParsedFile | null>(null)
   const [parsedResponse, setParsedResponse] = useState<ParsedResponse | null>(null)
@@ -61,7 +62,7 @@ export function AIResponseRenderer({ response, useBoilerplate = true, isStreamin
 
   // Fetch boilerplate components on mount
   useEffect(() => {
-    if (useBoilerplate) {
+    if (useBoilerplate && !hasExistingProject) {
       setIsLoadingBoilerplate(true)
       setBoilerplateApplied(false) // Reset when useBoilerplate changes
       fetchBoilerplateComponents()
@@ -77,9 +78,9 @@ export function AIResponseRenderer({ response, useBoilerplate = true, isStreamin
           setIsLoadingBoilerplate(false)
         })
     } else {
-      setBoilerplateApplied(false) // Reset when boilerplate is disabled
+      setBoilerplateApplied(hasExistingProject) // For existing projects, mark as applied immediately
     }
-  }, [useBoilerplate])
+  }, [useBoilerplate, hasExistingProject])
 
   useEffect(() => {
     if (response) {
@@ -92,36 +93,54 @@ export function AIResponseRenderer({ response, useBoilerplate = true, isStreamin
       
       let parsed: ParsedResponse
       
-      if (useBoilerplate && boilerplateComponents && !boilerplateApplied) {
-        // First time: merge boilerplate with AI response
+      if (hasExistingProject && !boilerplateApplied) {
+        // Existing project: parse the full response (which includes existing files + new streaming content)
+        parsed = parser.parseResponse(response)
+        setBoilerplateApplied(true) // Mark as applied since existing project already has boilerplate
+        console.log('AIResponseRenderer - Parsed existing project:', parsed)
+      } else if (useBoilerplate && boilerplateComponents && !boilerplateApplied) {
+        // New project: merge boilerplate with AI response
         parsed = parser.parseResponseWithBoilerplate(response, boilerplateComponents)
         setBoilerplateApplied(true)
-        console.log('AIResponseRenderer - Applied boilerplate for first time:', parsed)
+        console.log('AIResponseRenderer - Applied boilerplate for new project:', parsed)
       } else if (boilerplateApplied && parsedResponse) {
-        // Subsequent updates: preserve boilerplate files and merge with new AI content
+        // Subsequent updates: preserve existing files and merge with new AI content
         const aiResult = parser.parseResponse(response)
-        const existingFiles = parsedResponse.files.filter(file => isBoilerplateFile(file.path))
-        const existingDirs = parsedResponse.directories.filter(dir => isBoilerplateFile(dir.path))
         
-        // Merge existing boilerplate files with new AI files
+        // For existing projects, preserve ALL existing files, not just boilerplate
+        const existingFiles = hasExistingProject ? parsedResponse.files : parsedResponse.files.filter(file => isBoilerplateFile(file.path))
+        const existingDirs = hasExistingProject ? parsedResponse.directories : parsedResponse.directories.filter(dir => isBoilerplateFile(dir.path))
+        
+        // Merge existing files with new AI files
         const mergedFiles = [...existingFiles]
         const mergedDirs = [...existingDirs]
         
-        // Add or update AI files
+        // Add or update AI files with consistent IDs
         aiResult.files.forEach(aiFile => {
           const existingIndex = mergedFiles.findIndex(f => f.path === aiFile.path)
-          if (existingIndex >= 0) {
-            mergedFiles[existingIndex] = aiFile
+          if (existingIndex >= 0 && mergedFiles[existingIndex]) {
+            // Update existing file but preserve the ID to prevent key conflicts
+            mergedFiles[existingIndex] = {
+              ...aiFile,
+              id: mergedFiles[existingIndex].id
+            }
           } else {
-            mergedFiles.push(aiFile)
+            // Add new file with consistent ID
+            mergedFiles.push({
+              ...aiFile,
+              id: `file-${aiFile.path.replace(/[^a-zA-Z0-9]/g, '-')}`
+            })
           }
         })
         
-        // Add new AI directories
+        // Add new AI directories with consistent IDs
         aiResult.directories.forEach(aiDir => {
           const existingIndex = mergedDirs.findIndex(d => d.path === aiDir.path)
           if (existingIndex < 0) {
-            mergedDirs.push(aiDir)
+            mergedDirs.push({
+              ...aiDir,
+              id: `dir-${aiDir.path.replace(/[^a-zA-Z0-9]/g, '-')}`
+            })
           }
         })
         
@@ -134,10 +153,10 @@ export function AIResponseRenderer({ response, useBoilerplate = true, isStreamin
           artifact: aiResult.artifact || parsedResponse.artifact,
           steps: [...(parsedResponse.steps || []), ...(aiResult.steps || [])],
         }
-        console.log('AIResponseRenderer - Preserved boilerplate and merged AI content:', {
+        console.log('AIResponseRenderer - Preserved existing files and merged AI content:', {
           totalFiles: parsed.files.length,
           totalDirectories: parsed.directories.length,
-          boilerplateFiles: existingFiles.length,
+          existingFiles: existingFiles.length,
           aiFiles: aiResult.files.length,
           aiDirectories: aiResult.directories.length
         })
@@ -245,8 +264,17 @@ export function AIResponseRenderer({ response, useBoilerplate = true, isStreamin
   const treeData = useMemo(() => {
     if (!parsedResponse) return []
     
-    const allFiles = [...parsedResponse.files]
-    const fileTree = AIResponseParser.filesToTree(allFiles, parsedResponse.directories)
+    const deduplicatedFiles = parsedResponse.files.map(file => ({
+      ...file,
+      id: `file-${file.path.replace(/[^a-zA-Z0-9]/g, '-')}`
+    }))
+    
+    const deduplicatedDirs = parsedResponse.directories.map(dir => ({
+      ...dir,
+      id: `dir-${dir.path.replace(/[^a-zA-Z0-9]/g, '-')}`
+    }))
+    
+    const fileTree = AIResponseParser.filesToTree(deduplicatedFiles, deduplicatedDirs)
     
     // Convert to TreeViewElement format
     const convertToTreeElement = (file: ParsedFile): TreeViewElement => ({
