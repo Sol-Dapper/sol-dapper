@@ -1,20 +1,15 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "buildCommand": "cd ../.. && bun run build --filter=backend",
-  "devCommand": "cd ../.. && bun run dev --filter=backend --port $PORT", 
-  "installCommand": "cd ../.. && bun install",
-  "outputDirectory": "dist",
-  "functions": {
-    "dist/index.js": {
-      "runtime": "nodejs@22"
-    }
-  },
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/dist/index.js"
+      "src": "index.ts",
+      "use": "@vercel/node"
     }
   ],
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD ../../"
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.ts"
+    }
+  ]
 }
