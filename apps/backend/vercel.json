@@ -5,11 +5,6 @@
   "devCommand": "cd apps/backend && bun run dev",
   "installCommand": "bun install",
   "framework": null,
-  "functions": {
-    "apps/backend/dist/index.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "routes": [
     {
       "src": "/(.*)",
