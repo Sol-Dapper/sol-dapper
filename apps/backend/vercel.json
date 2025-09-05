@@ -1,14 +1,14 @@
 {
   "version": 2,
-  "name": "my-backend",
-  "buildCommand": "cd apps/backend && bun install && bunx prisma generate --schema=../../packages/db/prisma/schema.prisma && bun run build",
-  "devCommand": "cd apps/backend && bun run dev",
+  "name": "backend",
+  "buildCommand": "cp -r ../../packages ./packages && bun install && bunx prisma generate --schema=./packages/db/prisma/schema.prisma && bun run build",
+  "devCommand": "bun run dev",
   "installCommand": "bun install",
   "framework": null,
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "apps/backend/dist/index.js"
+      "dest": "dist/index.js"
     }
   ]
 }
