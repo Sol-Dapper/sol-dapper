@@ -7,7 +7,7 @@
   "framework": null,
   "functions": {
     "apps/backend/dist/index.js": {
-      "runtime": "bun"
+      "runtime": "nodejs20.x"
     }
   },
   "routes": [
