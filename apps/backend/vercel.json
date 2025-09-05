@@ -1,20 +1,22 @@
 {
   "version": 2,
-  "buildCommand": "cp -r ../packages/db ./packages/db && bun install && bun run db:generate && bun run build",
+  "name": "my-backend",
+  "buildCommand": "cd apps/backend && bun install && bunx prisma generate --schema=../../packages/db/prisma/schema.prisma && bun run build",
+  "devCommand": "cd apps/backend && bun run dev",
   "installCommand": "bun install",
-  "builds": [
-    {
-      "src": "index.ts",
-      "use": "@vercel/node"
+  "framework": null,
+  "functions": {
+    "apps/backend/dist/index.js": {
+      "runtime": "bun"
     }
-  ],
+  },
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/index.ts"
+      "dest": "apps/backend/dist/index.js"
     }
   ],
   "env": {
-    "PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK": "1"
+    "DATABASE_URL": "@database_url"
   }
 }
