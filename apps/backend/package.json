@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "db:generate": "prisma generate --schema=./prisma/schema.prisma",
+    "db:generate": "prisma generate",
     "build": "bun run db:generate && bun build index.ts --outdir dist --target bun",
     "start": "bun dist/index.js",
     "dev": "bun --watch index.ts"
