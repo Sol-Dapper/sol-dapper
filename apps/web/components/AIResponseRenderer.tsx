@@ -13,10 +13,13 @@ import {
   Info,
   Zap,
   Terminal,
-  Download
+  Download,
+  Code,
+  Play
 } from 'lucide-react'
 import { Tree, type TreeViewElement } from '@/components/ui/file-tree'
 import { CodeEditor } from '@/components/CodeEditor'
+import { WebContainerRunner } from '@/components/WebContainerRunner'
 import { AIResponseParser, type ParsedResponse, type ParsedFile } from '@/lib/xml-parser'
 import { fetchBoilerplateComponents } from '@/lib/api'
 
@@ -35,29 +38,68 @@ export function AIResponseRenderer({ response, useBoilerplate = true, isStreamin
   const [isLoadingBoilerplate, setIsLoadingBoilerplate] = useState<boolean>(false)
   const [streamingFileContent, setStreamingFileContent] = useState<string>('')
   const [boilerplateApplied, setBoilerplateApplied] = useState<boolean>(false)
+  const [viewMode, setViewMode] = useState<'code' | 'runtime'>('code')
+  const [shouldUpdateWebContainer, setShouldUpdateWebContainer] = useState<boolean>(false)
+  const [lastSyncedFileCount, setLastSyncedFileCount] = useState<number>(0)
   
   const parser = useMemo(() => new AIResponseParser(), [])
 
   // Helper function to check if a file is from boilerplate
   const isBoilerplateFile = (filePath: string): boolean => {
-    return filePath.includes('app-footer.tsx') || 
-           filePath.includes('wallet-button.tsx') ||
-           filePath.includes('cluster-data-access.tsx') ||
-           filePath.includes('cluster-ui.tsx') ||
-           filePath.includes('theme-select.tsx') ||
-           filePath.includes('tailwind.config.js') ||
-           filePath.includes('src/app/globals.css') ||
-           filePath.includes('package.json') ||
-           filePath.includes('tsconfig.json') ||
-           filePath.includes('next.config.ts') ||
-           filePath.includes('postcss.config.mjs') ||
-           filePath.includes('anchor/') ||
-           filePath.includes('src/app/layout.tsx') ||
-           filePath.includes('src/app/page.tsx') ||
-           filePath.includes('src/components/app-') ||
-           filePath.includes('src/components/solana/') ||
-           filePath.includes('src/components/react-query-provider.tsx') ||
-           filePath.includes('src/components/theme-provider.tsx')
+    // Essential configuration files that should NEVER be overwritten
+    const essentialFiles = [
+      'package.json',
+      'tsconfig.json', 
+      'next.config.ts',
+      'next.config.js',
+      'postcss.config.mjs',
+      'tailwind.config.js',
+      'tailwind.config.ts',
+      '.env',
+      '.env.local',
+      '.gitignore',
+      'README.md'
+    ]
+    
+    // Boilerplate component files
+    const boilerplateComponents = [
+      'app-footer.tsx',
+      'wallet-button.tsx',
+      'cluster-data-access.tsx',
+      'cluster-ui.tsx',
+      'theme-select.tsx',
+      'react-query-provider.tsx',
+      'theme-provider.tsx'
+    ]
+    
+    // Essential directories and files
+    const boilerplatePaths = [
+      'src/app/globals.css',
+      'src/app/layout.tsx',
+      'anchor/',
+      'src/components/app-',
+      'src/components/solana/'
+    ]
+    
+    // Normalize path for comparison
+    const normalizedPath = filePath.replace(/^\/+/, '').toLowerCase()
+    
+    // Check if it's an essential file
+    if (essentialFiles.some(file => normalizedPath.endsWith(file.toLowerCase()))) {
+      return true
+    }
+    
+    // Check if it's a boilerplate component
+    if (boilerplateComponents.some(comp => normalizedPath.includes(comp.toLowerCase()))) {
+      return true
+    }
+    
+    // Check if it's in a boilerplate path
+    if (boilerplatePaths.some(path => normalizedPath.includes(path.toLowerCase()))) {
+      return true
+    }
+    
+    return false
   }
 
   // Fetch boilerplate components on mount
@@ -102,73 +144,51 @@ export function AIResponseRenderer({ response, useBoilerplate = true, isStreamin
         // New project: merge boilerplate with AI response
         parsed = parser.parseResponseWithBoilerplate(response, boilerplateComponents)
         setBoilerplateApplied(true)
-        console.log('AIResponseRenderer - Applied boilerplate for new project:', parsed)
-      } else if (boilerplateApplied && parsedResponse) {
-        // Subsequent updates: preserve existing files and merge with new AI content
-        const aiResult = parser.parseResponse(response)
-        
-        // For existing projects, preserve ALL existing files, not just boilerplate
-        const existingFiles = hasExistingProject ? parsedResponse.files : parsedResponse.files.filter(file => isBoilerplateFile(file.path))
-        const existingDirs = hasExistingProject ? parsedResponse.directories : parsedResponse.directories.filter(dir => isBoilerplateFile(dir.path))
-        
-        // Merge existing files with new AI files
-        const mergedFiles = [...existingFiles]
-        const mergedDirs = [...existingDirs]
-        
-        // Add or update AI files with consistent IDs
-        aiResult.files.forEach(aiFile => {
-          const existingIndex = mergedFiles.findIndex(f => f.path === aiFile.path)
-          if (existingIndex >= 0 && mergedFiles[existingIndex]) {
-            // Update existing file but preserve the ID to prevent key conflicts
-            mergedFiles[existingIndex] = {
-              ...aiFile,
-              id: mergedFiles[existingIndex].id
-            }
-          } else {
-            // Add new file with consistent ID
-            mergedFiles.push({
-              ...aiFile,
-              id: `file-${aiFile.path.replace(/[^a-zA-Z0-9]/g, '-')}`
-            })
-          }
-        })
-        
-        // Add new AI directories with consistent IDs
-        aiResult.directories.forEach(aiDir => {
-          const existingIndex = mergedDirs.findIndex(d => d.path === aiDir.path)
-          if (existingIndex < 0) {
-            mergedDirs.push({
-              ...aiDir,
-              id: `dir-${aiDir.path.replace(/[^a-zA-Z0-9]/g, '-')}`
-            })
-          }
-        })
-        
-        parsed = {
-          files: mergedFiles,
-          directories: mergedDirs,
-          codeBlocks: [...(parsedResponse.codeBlocks || []), ...aiResult.codeBlocks],
-          text: aiResult.text || parsedResponse.text,
-          review: aiResult.review || parsedResponse.review,
-          artifact: aiResult.artifact || parsedResponse.artifact,
-          steps: [...(parsedResponse.steps || []), ...(aiResult.steps || [])],
+        // Only trigger WebContainer update if we're in runtime mode and have new files
+        if (viewMode === 'runtime' && parsed.files.length !== lastSyncedFileCount) {
+          setShouldUpdateWebContainer(true)
         }
-        console.log('AIResponseRenderer - Preserved existing files and merged AI content:', {
+        console.log('AIResponseRenderer - Applied boilerplate for new project:', parsed)
+      } else if (boilerplateApplied) {
+        // Subsequent updates: merge with boilerplate if needed, otherwise just parse
+        if (useBoilerplate && boilerplateComponents) {
+          parsed = parser.parseResponseWithBoilerplate(response, boilerplateComponents)
+        } else {
+          parsed = parser.parseResponse(response)
+        }
+        // Only trigger WebContainer update if we're in runtime mode and have meaningful changes
+        if (viewMode === 'runtime' && parsed.files.length !== lastSyncedFileCount) {
+          setShouldUpdateWebContainer(true)
+        }
+        console.log('AIResponseRenderer - Updated with new AI content:', {
           totalFiles: parsed.files.length,
-          totalDirectories: parsed.directories.length,
-          existingFiles: existingFiles.length,
-          aiFiles: aiResult.files.length,
-          aiDirectories: aiResult.directories.length
+          totalDirectories: parsed.directories.length
         })
       } else {
         // Standard parsing (no boilerplate)
         parsed = parser.parseResponse(response)
+        // Only trigger WebContainer update if we're in runtime mode
+        if (viewMode === 'runtime') {
+          setShouldUpdateWebContainer(true)
+        }
         console.log('AIResponseRenderer - Standard parsing:', parsed)
       }
       
       setParsedResponse(parsed)
+      
+      // Debug logging to see what files we actually have
+      console.log('🔍 DEBUG - Final parsed response:', {
+        totalFiles: parsed.files.length,
+        totalDirectories: parsed.directories.length,
+        filesList: parsed.files.map(f => f.path),
+        directoriesList: parsed.directories.map(d => d.path),
+        hasBoilerplate: parsed.files.some(f => f.path.includes('package.json')),
+        useBoilerplate,
+        boilerplateApplied,
+        boilerplateComponents: !!boilerplateComponents
+      })
     }
-  }, [response, parser, useBoilerplate, boilerplateComponents, isLoadingBoilerplate])
+  }, [response, parser, useBoilerplate, boilerplateComponents, isLoadingBoilerplate, boilerplateApplied, hasExistingProject, viewMode, lastSyncedFileCount])
 
   // Automatically select the first file when files are available and no file is selected
   useEffect(() => {
@@ -264,15 +284,32 @@ export function AIResponseRenderer({ response, useBoilerplate = true, isStreamin
   const treeData = useMemo(() => {
     if (!parsedResponse) return []
     
-    const deduplicatedFiles = parsedResponse.files.map(file => ({
-      ...file,
-      id: `file-${file.path.replace(/[^a-zA-Z0-9]/g, '-')}`
-    }))
+    // Create a Map to deduplicate files by path
+    const uniqueFilesMap = new Map<string, ParsedFile>()
+    const uniqueDirsMap = new Map<string, ParsedFile>()
     
-    const deduplicatedDirs = parsedResponse.directories.map(dir => ({
-      ...dir,
-      id: `dir-${dir.path.replace(/[^a-zA-Z0-9]/g, '-')}`
-    }))
+    // Deduplicate files by path
+    parsedResponse.files.forEach(file => {
+      if (!uniqueFilesMap.has(file.path)) {
+        uniqueFilesMap.set(file.path, {
+          ...file,
+          id: file.id || `file-${file.path.replace(/[^a-zA-Z0-9]/g, '-')}`
+        })
+      }
+    })
+    
+    // Deduplicate directories by path
+    parsedResponse.directories.forEach(dir => {
+      if (!uniqueDirsMap.has(dir.path)) {
+        uniqueDirsMap.set(dir.path, {
+          ...dir,
+          id: dir.id || `dir-${dir.path.replace(/[^a-zA-Z0-9]/g, '-')}`
+        })
+      }
+    })
+    
+    const deduplicatedFiles = Array.from(uniqueFilesMap.values())
+    const deduplicatedDirs = Array.from(uniqueDirsMap.values())
     
     const fileTree = AIResponseParser.filesToTree(deduplicatedFiles, deduplicatedDirs)
     
@@ -399,10 +436,14 @@ Generated on: ${new Date().toISOString()}
   }
 
   if (!parsedResponse) {
+    console.log('⚠️ DEBUG - No parsed response, showing raw response')
     return (
       <div className="space-y-4">
         <Card>
           <CardContent className="p-6">
+            <div className="mb-4 text-sm text-red-600">
+              DEBUG: No parsed response - showing raw response
+            </div>
             <pre className="whitespace-pre-wrap text-sm leading-relaxed">
               {response}
             </pre>
@@ -426,8 +467,14 @@ Generated on: ${new Date().toISOString()}
     file.path.includes('package.json')
   )
   
-  console.log('AIResponseRenderer - hasFiles:', hasFiles, 'files:', parsedResponse.files.length, 'directories:', parsedResponse.directories.length)
-  console.log('AIResponseRenderer - hasArtifact:', hasArtifact)
+  console.log('🔍 DEBUG - Render check:', {
+    hasFiles, 
+    filesCount: parsedResponse.files.length, 
+    directoriesCount: parsedResponse.directories.length,
+    hasArtifact,
+    hasBoilerplateFiles,
+    firstFewFiles: parsedResponse.files.slice(0, 3).map(f => ({ path: f.path, name: f.name }))
+  })
 
   return (
     <div className="space-y-6">
@@ -465,7 +512,43 @@ Generated on: ${new Date().toISOString()}
                 </span>
               </div>
             )}
-            <div className="ml-auto">
+            {shouldUpdateWebContainer && viewMode === 'runtime' && (
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                  Syncing to WebContainer...
+                </span>
+              </div>
+            )}
+            <div className="ml-auto flex items-center gap-2">
+              {/* View Mode Toggle */}
+              <div className="flex rounded-lg border border-border/50 p-1">
+                <Button
+                  variant={viewMode === 'code' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('code')}
+                  className="flex items-center gap-2 h-8"
+                >
+                  <Code className="h-4 w-4" />
+                  Code
+                </Button>
+                                  <Button
+                    variant={viewMode === 'runtime' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => {
+                      setViewMode('runtime')
+                      // Trigger WebContainer update when switching to runtime view
+                      if (parsedResponse && parsedResponse.files.length > 0) {
+                        setShouldUpdateWebContainer(true)
+                      }
+                    }}
+                    className="flex items-center gap-2 h-8"
+                  >
+                    <Play className="h-4 w-4" />
+                    Run
+                  </Button>
+              </div>
+              
               <Button
                 variant="outline"
                 size="sm"
@@ -480,62 +563,74 @@ Generated on: ${new Date().toISOString()}
             </div>
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
-            {/* File Tree */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">File Explorer</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[600px]">
-                  <div className="p-4">
-                    <Tree
-                      data={treeData}
-                      handleSelect={handleFileSelect}
-                      initialSelectedId={selectedFileId}
-                      expandAll={true}
+          {viewMode === 'code' ? (
+            <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
+              {/* File Tree */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">File Explorer</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <ScrollArea className="h-[600px]">
+                    <div className="p-4">
+                      <Tree
+                        data={treeData}
+                        handleSelect={handleFileSelect}
+                        initialSelectedId={selectedFileId}
+                        expandAll={true}
+                      />
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+
+              {/* Code Editor */}
+              <div>
+                {selectedFile ? (
+                  <div className="relative">
+                    {isStreaming && selectedFile && !isBoilerplateFile(selectedFile.path) && (
+                      <div className="absolute top-4 right-4 z-10">
+                        <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-1">
+                          <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse"></div>
+                          <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                            AI Writing...
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    <CodeEditor
+                      code={streamingFileContent || selectedFile.content}
+                      language={selectedFile.language}
+                      filename={selectedFile.name}
+                      height={600}
+                      readonly={false} // Make it editable
+                      isStreaming={isStreaming && !isBoilerplateFile(selectedFile.path)}
+                      streamingSpeed={10} // Characters per interval
                     />
                   </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            {/* Code Editor */}
-            <div>
-              {selectedFile ? (
-                <div className="relative">
-                  {isStreaming && selectedFile && !isBoilerplateFile(selectedFile.path) && (
-                    <div className="absolute top-4 right-4 z-10">
-                      <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-1">
-                        <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                          AI Writing...
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  <CodeEditor
-                    code={streamingFileContent || selectedFile.content}
-                    language={selectedFile.language}
-                    filename={selectedFile.name}
-                    height={600}
-                    readonly={false} // Make it editable
-                    isStreaming={isStreaming && !isBoilerplateFile(selectedFile.path)}
-                    streamingSpeed={10} // Characters per interval
-                  />
-                </div>
-              ) : (
-                <Card className="h-[600px] flex items-center justify-center">
-                  <CardContent className="text-center">
-                    <FolderTree className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">
-                      Select a file from the tree to view its contents
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+                ) : (
+                  <Card className="h-[600px] flex items-center justify-center">
+                    <CardContent className="text-center">
+                      <FolderTree className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">
+                        Select a file from the tree to view its contents
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <WebContainerRunner 
+              files={parsedResponse.files} 
+              isVisible={viewMode === 'runtime'}
+              shouldUpdateFiles={shouldUpdateWebContainer}
+              onFilesUpdated={() => {
+                setShouldUpdateWebContainer(false)
+                setLastSyncedFileCount(parsedResponse.files.length)
+              }}
+            />
+          )}
         </div>
       )}
 

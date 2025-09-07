@@ -81,73 +81,66 @@ export class AIResponseParser {
 
   /**
    * Merge boilerplate components with AI response
-   * The boilerplate components will be parsed first, then the AI response will override/extend them
+   * AI files take precedence - boilerplate only fills in missing files
    */
   parseResponseWithBoilerplate(response: string, boilerplateComponents: string): ParsedResponse {
-    console.log('XML Parser - Merging boilerplate with AI response');
-    const boilerplateResult = this.parseResponse(boilerplateComponents);
+    console.log('XML Parser - Adding boilerplate to fill gaps in AI response');
     const aiResult = this.parseResponse(response);
-    
-    console.log('XML Parser - Boilerplate parsed:', {
-      files: boilerplateResult.files.length,
-      directories: boilerplateResult.directories.length
-    });
+    const boilerplateResult = this.parseResponse(boilerplateComponents);
     
     console.log('XML Parser - AI response parsed:', {
       files: aiResult.files.length,
       directories: aiResult.directories.length
     });
     
-    // Start with boilerplate files and directories
-    const mergedFiles: ParsedFile[] = [...boilerplateResult.files];
-    const mergedDirectories: ParsedFile[] = [...boilerplateResult.directories];
+    console.log('XML Parser - Boilerplate parsed:', {
+      files: boilerplateResult.files.length,
+      directories: boilerplateResult.directories.length
+    });
     
-    // Override/add files from AI response
-    aiResult.files.forEach(aiFile => {
-      const existingIndex = mergedFiles.findIndex(f => f.path === aiFile.path);
-      if (existingIndex >= 0) {
-        // Override existing file
-        mergedFiles[existingIndex] = aiFile;
-        console.log('XML Parser - Overriding file:', aiFile.path);
+    // Start with AI files (these take precedence)
+    const mergedFiles: ParsedFile[] = [...aiResult.files];
+    const mergedDirectories: ParsedFile[] = [...aiResult.directories];
+    
+    // Add boilerplate files ONLY if AI didn't provide them
+    boilerplateResult.files.forEach(boilerplateFile => {
+      const aiFileExists = aiResult.files.some(aiFile => aiFile.path === boilerplateFile.path);
+      if (!aiFileExists) {
+        mergedFiles.push(boilerplateFile);
+        console.log('XML Parser - Adding missing boilerplate file:', boilerplateFile.path);
       } else {
-        // Add new file
-        mergedFiles.push(aiFile);
-        console.log('XML Parser - Adding new file:', aiFile.path);
+        console.log('XML Parser - AI provided file, skipping boilerplate:', boilerplateFile.path);
       }
     });
     
-    // Add directories from AI response (avoid duplicates)
-    aiResult.directories.forEach(aiDir => {
-      const existingIndex = mergedDirectories.findIndex(d => d.path === aiDir.path);
-      if (existingIndex >= 0) {
-        // Keep existing directory (boilerplate takes precedence for directory structure)
-        console.log('XML Parser - Keeping existing directory:', aiDir.path);
+    // Add boilerplate directories ONLY if AI didn't provide them
+    boilerplateResult.directories.forEach(boilerplateDir => {
+      const aiDirExists = aiResult.directories.some(aiDir => aiDir.path === boilerplateDir.path);
+      if (!aiDirExists) {
+        mergedDirectories.push(boilerplateDir);
+        console.log('XML Parser - Adding missing boilerplate directory:', boilerplateDir.path);
       } else {
-        // Add new directory
-        mergedDirectories.push(aiDir);
-        console.log('XML Parser - Adding new directory:', aiDir.path);
+        console.log('XML Parser - AI provided directory, skipping boilerplate:', boilerplateDir.path);
       }
     });
     
-    // Merge other properties
+    // Merge other properties (prioritize AI content)
     const mergedResult: ParsedResponse = {
       files: mergedFiles,
       directories: mergedDirectories,
-      codeBlocks: [...boilerplateResult.codeBlocks, ...aiResult.codeBlocks],
+      codeBlocks: [...aiResult.codeBlocks, ...boilerplateResult.codeBlocks],
       text: aiResult.text || boilerplateResult.text, // Prefer AI response text
       review: aiResult.review, // Use AI review if present
       artifact: aiResult.artifact || boilerplateResult.artifact, // Prefer AI artifact
-      steps: [...(boilerplateResult.steps || []), ...(aiResult.steps || [])],
+      steps: [...(aiResult.steps || []), ...(boilerplateResult.steps || [])],
     };
     
-    console.log('XML Parser - Merged result:', {
+    console.log('XML Parser - Final result:', {
       totalFiles: mergedResult.files.length,
       totalDirectories: mergedResult.directories.length,
-      codeBlocks: mergedResult.codeBlocks.length,
-      preservedBoilerplateFiles: mergedResult.files.filter(f => 
-        boilerplateResult.files.some(bf => bf.path === f.path) && 
-        !aiResult.files.some(af => af.path === f.path)
-      ).length
+      aiFiles: aiResult.files.length,
+      addedBoilerplateFiles: mergedResult.files.length - aiResult.files.length,
+      codeBlocks: mergedResult.codeBlocks.length
     });
     
     return mergedResult;
@@ -540,58 +533,75 @@ export class AIResponseParser {
    * Convert parsed files to tree structure for file explorer
    */
   static filesToTree(files: ParsedFile[], directories: ParsedFile[] = []): ParsedFile[] {
-    const tree: ParsedFile[] = [...directories];
+    // Use Maps for efficient deduplication
+    const allNodes = new Map<string, ParsedFile>()
     
-    // Group files by directory
-    const filesByDir: { [key: string]: ParsedFile[] } = {};
+    // Add existing directories first
+    directories.forEach(dir => {
+      allNodes.set(dir.path, { ...dir, children: [] })
+    })
     
+    // Process all files and create necessary directory structure
     files.forEach(file => {
-      const pathParts = file.path.split('/').filter(Boolean);
-      if (pathParts.length > 1) {
-        const dirPath = pathParts.slice(0, -1).join('/');
-        if (!filesByDir[dirPath]) {
-          filesByDir[dirPath] = [];
-        }
-        filesByDir[dirPath].push(file);
-      } else {
-        tree.push(file);
+      const pathParts = file.path.split('/').filter(Boolean)
+      
+      // Create directory structure for this file
+      for (let i = 0; i < pathParts.length - 1; i++) {
+        const dirPath = pathParts.slice(0, i + 1).join('/')
+        const dirName = pathParts[i]
+        
+                 if (!allNodes.has(dirPath)) {
+           allNodes.set(dirPath, {
+             id: `dir-${dirPath.replace(/[^a-zA-Z0-9]/g, '-')}`,
+             name: dirName || '',
+             path: dirPath,
+             content: '',
+             language: '',
+             isDirectory: true,
+             children: [],
+           })
+         }
       }
-    });
-
-    // Create directory structure
-    Object.entries(filesByDir).forEach(([dirPath, dirFiles]) => {
-      const pathParts = dirPath.split('/');
-      let currentLevel = tree;
       
-      pathParts.forEach((part, index) => {
-        const currentPath = pathParts.slice(0, index + 1).join('/');
-        let dir = currentLevel.find(item => item.isDirectory && item.path === currentPath);
+      // Add the file itself
+      allNodes.set(file.path, { ...file, children: undefined })
+    })
+    
+    // Build the tree structure
+    const tree: ParsedFile[] = []
+    const nodesByPath = new Map<string, ParsedFile>()
+    
+    // Convert map to array and sort by path depth
+    const sortedNodes = Array.from(allNodes.values()).sort((a, b) => {
+      const aDepth = a.path.split('/').length
+      const bDepth = b.path.split('/').length
+      return aDepth - bDepth
+    })
+    
+    // Build tree by adding nodes level by level
+    sortedNodes.forEach(node => {
+      nodesByPath.set(node.path, node)
+      
+      const pathParts = node.path.split('/').filter(Boolean)
+      
+      if (pathParts.length === 1) {
+        // Root level file or directory
+        tree.push(node)
+      } else {
+        // Find parent directory
+        const parentPath = pathParts.slice(0, -1).join('/')
+        const parent = nodesByPath.get(parentPath)
         
-        if (!dir) {
-          dir = {
-            id: `dir-${currentPath}`,
-            name: part,
-            path: currentPath,
-            content: '',
-            language: '',
-            isDirectory: true,
-            children: [],
-          };
-          currentLevel.push(dir);
+        if (parent && parent.children) {
+          // Check for duplicates before adding
+          const existingChild = parent.children.find(child => child.path === node.path)
+          if (!existingChild) {
+            parent.children.push(node)
+          }
         }
-        
-        currentLevel = dir.children!;
-      });
-      
-      // Add files to the deepest directory
-      const deepestDir = pathParts.reduce((level, part, index) => {
-        const currentPath = pathParts.slice(0, index + 1).join('/');
-        return level.find(item => item.isDirectory && item.path === currentPath)?.children || [];
-      }, tree);
-      
-      deepestDir.push(...dirFiles);
-    });
+      }
+    })
 
-    return tree;
+    return tree
   }
 }
