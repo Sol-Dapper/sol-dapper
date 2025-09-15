@@ -13,7 +13,10 @@ const PORT = process.env.PORT || 3001;
 const app = express();
 
 // Configure CORS for streaming and cross-origin requests
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 
 app.use(express.json());
 
