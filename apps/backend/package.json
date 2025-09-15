@@ -10,13 +10,13 @@
     "dev": "bun --watch index.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.17",
+    "@ai-sdk/openai": "^2.0.30",
     "@prisma/client": "^6.15.0",
+    "ai": "^5.0.44",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "jose": "^5.2.0",
-    "ai": "^5.0.44",
-    "@ai-sdk/openai": "^1.0.1",
-    "@ai-sdk/anthropic": "^1.0.1"
+    "jose": "^5.2.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.23",
