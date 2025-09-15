@@ -14,11 +14,27 @@ const app = express();
 
 // Configure CORS for streaming and cross-origin requests
 app.use(cors({
-  origin: true,
-  credentials: true
+  origin: [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    process.env.FRONTEND_URL || 'http://localhost:3000'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'Content-Type']
 }));
 
 app.use(express.json());
+
+// Add explicit OPTIONS handling for chat endpoint
+app.options("/api/chat", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, Origin, X-Requested-With");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.status(200).end();
+});
 
 app.post("/api/register", async (req, res) => {
   try {
