@@ -25,12 +25,13 @@ import { fetchBoilerplateComponents } from '@/lib/api'
 
 interface AIResponseRendererProps {
   response: string
+  existingFiles?: string // Existing files from previous responses
   useBoilerplate?: boolean // Flag to enable/disable boilerplate integration
   isStreaming?: boolean // Flag to indicate if response is being streamed
   hasExistingProject?: boolean // Flag to indicate if this is an existing project with files
 }
 
-export function AIResponseRenderer({ response, useBoilerplate = true, isStreaming = false, hasExistingProject = false }: AIResponseRendererProps) {
+export function AIResponseRenderer({ response, existingFiles = "", useBoilerplate = true, isStreaming = false, hasExistingProject = false }: AIResponseRendererProps) {
   const [selectedFileId, setSelectedFileId] = useState<string>('')
   const [selectedFile, setSelectedFile] = useState<ParsedFile | null>(null)
   const [parsedResponse, setParsedResponse] = useState<ParsedResponse | null>(null)
@@ -102,9 +103,9 @@ export function AIResponseRenderer({ response, useBoilerplate = true, isStreamin
     return false
   }
 
-  // Fetch boilerplate components on mount
+  // Fetch boilerplate components on mount - ALWAYS fetch when useBoilerplate is true
   useEffect(() => {
-    if (useBoilerplate && !hasExistingProject) {
+    if (useBoilerplate) {
       setIsLoadingBoilerplate(true)
       setBoilerplateApplied(false) // Reset when useBoilerplate changes
       fetchBoilerplateComponents()
@@ -120,13 +121,16 @@ export function AIResponseRenderer({ response, useBoilerplate = true, isStreamin
           setIsLoadingBoilerplate(false)
         })
     } else {
-      setBoilerplateApplied(hasExistingProject) // For existing projects, mark as applied immediately
+      setIsLoadingBoilerplate(false)
+      setBoilerplateComponents('')
     }
-  }, [useBoilerplate, hasExistingProject])
+  }, [useBoilerplate])
 
   useEffect(() => {
     if (response) {
       console.log('AIResponseRenderer - Input response:', response)
+      console.log('AIResponseRenderer - Has existing files:', !!existingFiles)
+      console.log('AIResponseRenderer - Boilerplate available:', !!boilerplateComponents)
       
       // Wait for boilerplate to load if needed
       if (useBoilerplate && isLoadingBoilerplate) {
@@ -135,43 +139,31 @@ export function AIResponseRenderer({ response, useBoilerplate = true, isStreamin
       
       let parsed: ParsedResponse
       
-      if (hasExistingProject && !boilerplateApplied) {
-        // Existing project: parse the full response (which includes existing files + new streaming content)
-        parsed = parser.parseResponse(response)
-        setBoilerplateApplied(true) // Mark as applied since existing project already has boilerplate
-        console.log('AIResponseRenderer - Parsed existing project:', parsed)
-      } else if (useBoilerplate && boilerplateComponents && !boilerplateApplied) {
-        // New project: merge boilerplate with AI response
-        parsed = parser.parseResponseWithBoilerplate(response, boilerplateComponents)
-        setBoilerplateApplied(true)
-        // Only trigger WebContainer update if we're in runtime mode and have new files
-        if (viewMode === 'runtime' && parsed.files.length !== lastSyncedFileCount) {
-          setShouldUpdateWebContainer(true)
-        }
-        console.log('AIResponseRenderer - Applied boilerplate for new project:', parsed)
-      } else if (boilerplateApplied) {
-        // Subsequent updates: merge with boilerplate if needed, otherwise just parse
-        if (useBoilerplate && boilerplateComponents) {
-          parsed = parser.parseResponseWithBoilerplate(response, boilerplateComponents)
+      // SIMPLIFIED LOGIC: Always try to include boilerplate when available
+      if (useBoilerplate && boilerplateComponents) {
+        if (existingFiles) {
+          // We have existing files - merge everything with boilerplate
+          parsed = parser.parseResponseWithExistingFiles(response, existingFiles, boilerplateComponents)
+          console.log('AIResponseRenderer - Merged response + existing + boilerplate')
         } else {
-          parsed = parser.parseResponse(response)
+          // No existing files - merge response with boilerplate
+          parsed = parser.parseResponseWithBoilerplate(response, boilerplateComponents)
+          console.log('AIResponseRenderer - Merged response + boilerplate')
         }
-        // Only trigger WebContainer update if we're in runtime mode and have meaningful changes
-        if (viewMode === 'runtime' && parsed.files.length !== lastSyncedFileCount) {
-          setShouldUpdateWebContainer(true)
-        }
-        console.log('AIResponseRenderer - Updated with new AI content:', {
-          totalFiles: parsed.files.length,
-          totalDirectories: parsed.directories.length
-        })
+        setBoilerplateApplied(true)
+      } else if (existingFiles) {
+        // No boilerplate available but we have existing files
+        parsed = parser.parseResponseWithExistingFiles(response, existingFiles)
+        console.log('AIResponseRenderer - Merged response + existing (no boilerplate)')
       } else {
-        // Standard parsing (no boilerplate)
+        // Just parse the response as-is
         parsed = parser.parseResponse(response)
-        // Only trigger WebContainer update if we're in runtime mode
-        if (viewMode === 'runtime') {
-          setShouldUpdateWebContainer(true)
-        }
-        console.log('AIResponseRenderer - Standard parsing:', parsed)
+        console.log('AIResponseRenderer - Standard parsing (no boilerplate, no existing)')
+      }
+      
+      // Only trigger WebContainer update if we're in runtime mode and have meaningful changes
+      if (viewMode === 'runtime' && parsed.files.length !== lastSyncedFileCount) {
+        setShouldUpdateWebContainer(true)
       }
       
       setParsedResponse(parsed)
@@ -185,10 +177,12 @@ export function AIResponseRenderer({ response, useBoilerplate = true, isStreamin
         hasBoilerplate: parsed.files.some(f => f.path.includes('package.json')),
         useBoilerplate,
         boilerplateApplied,
-        boilerplateComponents: !!boilerplateComponents
+        boilerplateComponents: !!boilerplateComponents,
+        hasExistingFiles: !!existingFiles,
+        isStreaming
       })
     }
-  }, [response, parser, useBoilerplate, boilerplateComponents, isLoadingBoilerplate, boilerplateApplied, hasExistingProject, viewMode, lastSyncedFileCount])
+  }, [response, existingFiles, parser, useBoilerplate, boilerplateComponents, isLoadingBoilerplate, viewMode, lastSyncedFileCount, isStreaming])
 
   // Automatically select the first file when files are available and no file is selected
   useEffect(() => {

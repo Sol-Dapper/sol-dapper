@@ -147,6 +147,104 @@ export class AIResponseParser {
   }
 
   /**
+   * Merge existing files with new AI response
+   * New AI files take precedence - existing files are preserved only if not overwritten
+   */
+  parseResponseWithExistingFiles(newResponse: string, existingFiles: string, boilerplateComponents?: string): ParsedResponse {
+    console.log('XML Parser - Merging new AI response with existing files');
+    
+    // Parse the new AI response
+    const newResult = this.parseResponse(newResponse);
+    
+    // Parse existing files
+    const existingResult = this.parseResponse(existingFiles);
+    
+    console.log('XML Parser - New AI response parsed:', {
+      files: newResult.files.length,
+      directories: newResult.directories.length
+    });
+    
+    console.log('XML Parser - Existing files parsed:', {
+      files: existingResult.files.length,
+      directories: existingResult.directories.length
+    });
+    
+    // Start with existing files
+    const mergedFiles: ParsedFile[] = [...existingResult.files];
+    const mergedDirectories: ParsedFile[] = [...existingResult.directories];
+    
+    // Add or update files from new AI response (these take precedence)
+    newResult.files.forEach(newFile => {
+      const existingFileIndex = mergedFiles.findIndex(existingFile => existingFile.path === newFile.path);
+      if (existingFileIndex >= 0) {
+        // Replace existing file with new version
+        mergedFiles[existingFileIndex] = newFile;
+        console.log('XML Parser - Updated existing file:', newFile.path);
+      } else {
+        // Add new file
+        mergedFiles.push(newFile);
+        console.log('XML Parser - Added new file:', newFile.path);
+      }
+    });
+    
+    // Add or update directories from new AI response
+    newResult.directories.forEach(newDir => {
+      const existingDirIndex = mergedDirectories.findIndex(existingDir => existingDir.path === newDir.path);
+      if (existingDirIndex >= 0) {
+        // Replace existing directory with new version
+        mergedDirectories[existingDirIndex] = newDir;
+        console.log('XML Parser - Updated existing directory:', newDir.path);
+      } else {
+        // Add new directory
+        mergedDirectories.push(newDir);
+        console.log('XML Parser - Added new directory:', newDir.path);
+      }
+    });
+    
+    // If boilerplate is provided, add missing boilerplate files
+    if (boilerplateComponents) {
+      const boilerplateResult = this.parseResponse(boilerplateComponents);
+      
+      boilerplateResult.files.forEach(boilerplateFile => {
+        const fileExists = mergedFiles.some(file => file.path === boilerplateFile.path);
+        if (!fileExists) {
+          mergedFiles.push(boilerplateFile);
+          console.log('XML Parser - Added missing boilerplate file:', boilerplateFile.path);
+        }
+      });
+      
+      boilerplateResult.directories.forEach(boilerplateDir => {
+        const dirExists = mergedDirectories.some(dir => dir.path === boilerplateDir.path);
+        if (!dirExists) {
+          mergedDirectories.push(boilerplateDir);
+          console.log('XML Parser - Added missing boilerplate directory:', boilerplateDir.path);
+        }
+      });
+    }
+    
+    // Merge other properties (prioritize new AI content)
+    const mergedResult: ParsedResponse = {
+      files: mergedFiles,
+      directories: mergedDirectories,
+      codeBlocks: [...(existingResult.codeBlocks || []), ...(newResult.codeBlocks || [])],
+      text: newResult.text || existingResult.text, // Prefer new AI response text
+      review: newResult.review || existingResult.review, // Prefer new AI review
+      artifact: newResult.artifact || existingResult.artifact, // Prefer new AI artifact
+      steps: [...(existingResult.steps || []), ...(newResult.steps || [])],
+    };
+    
+    console.log('XML Parser - Final merged result:', {
+      totalFiles: mergedResult.files.length,
+      totalDirectories: mergedResult.directories.length,
+      existingFiles: existingResult.files.length,
+      newFiles: newResult.files.length,
+      finalFilesList: mergedResult.files.map(f => f.path)
+    });
+    
+    return mergedResult;
+  }
+
+  /**
    * Parse forgeArtifact directly from raw text using regex
    */
   private parseForgeArtifactDirectly(response: string, result: ParsedResponse) {
@@ -214,7 +312,6 @@ export class AIResponseParser {
     // Enhanced parsing for forgeAction elements using regex
     const actionRegex = /<forgeAction\s+([^>]*?)>([\s\S]*?)<\/forgeAction>/gi;
     let actionMatch;
-    let fileIndex = 0;
     let shellIndex = 0;
     
     console.log('XML Parser - Searching for forgeAction elements...');

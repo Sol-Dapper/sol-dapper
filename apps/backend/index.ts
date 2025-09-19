@@ -10,6 +10,52 @@ import { openai } from "@ai-sdk/openai";
 import { anthropic } from "@ai-sdk/anthropic";
 
 const PORT = process.env.PORT || 3001;
+
+/**
+ * Analyze AI response to extract useful metrics for debugging and monitoring
+ */
+function analyzeAIResponse(response: string): {
+  hasForgeArtifact: boolean;
+  hasForgeActions: boolean;
+  estimatedFileCount: number;
+  estimatedShellCommands: number;
+  responseType: string;
+  hasValidXML: boolean;
+} {
+  const hasForgeArtifact = response.includes('<forgeArtifact') || response.includes('&lt;forgeArtifact');
+  const hasForgeActions = response.includes('<forgeAction') || response.includes('&lt;forgeAction');
+  
+  // Count potential files by counting forgeAction with type="file"
+  const fileMatches = response.match(/<forgeAction[^>]*type=["']file["'][^>]*>/g) || [];
+  const estimatedFileCount = fileMatches.length;
+  
+  // Count potential shell commands
+  const shellMatches = response.match(/<forgeAction[^>]*type=["'](shell|command)["'][^>]*>/g) || [];
+  const estimatedShellCommands = shellMatches.length;
+  
+  // Determine response type
+  let responseType = 'text';
+  if (hasForgeArtifact) {
+    responseType = 'forge_artifact';
+  } else if (hasForgeActions) {
+    responseType = 'forge_actions';
+  } else if (response.includes('<boltArtifact')) {
+    responseType = 'bolt_artifact';
+  }
+  
+  // Basic XML validation
+  const hasValidXML = hasForgeArtifact ? response.includes('</forgeArtifact>') || response.includes('&lt;/forgeArtifact&gt;') : true;
+  
+  return {
+    hasForgeArtifact,
+    hasForgeActions,
+    estimatedFileCount,
+    estimatedShellCommands,
+    responseType,
+    hasValidXML
+  };
+}
+
 const app = express();
 
 // Configure CORS for streaming and cross-origin requests
@@ -133,6 +179,24 @@ app.get("/api/project/:id", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: "Project not found or access denied" });
     }
 
+    // Add analysis of project structure for debugging
+    const systemPrompts = project.prompts.filter(p => p.type === 'SYSTEM');
+    const userPrompts = project.prompts.filter(p => p.type === 'USER');
+    const projectAnalysis = {
+      totalPrompts: project.prompts.length,
+      systemPrompts: systemPrompts.length,
+      userPrompts: userPrompts.length,
+      estimatedTotalFiles: systemPrompts.reduce((acc, prompt) => {
+        const analysis = analyzeAIResponse(prompt.content);
+        return acc + analysis.estimatedFileCount;
+      }, 0),
+      hasStructuredContent: systemPrompts.some(prompt => {
+        const analysis = analyzeAIResponse(prompt.content);
+        return analysis.hasForgeArtifact || analysis.hasForgeActions;
+      })
+    };
+
+    console.log(`Project ${projectId} retrieved:`, projectAnalysis);
     res.json(project);
   } catch (error) {
     console.error("Error fetching project:", error);
@@ -458,6 +522,9 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
       // Save AI response to database after streaming is complete
       if (fullResponse.trim()) {
         try {
+          // Validate and analyze the response before saving
+          const responseAnalysis = analyzeAIResponse(fullResponse);
+          
           await prismaClient.prompt.create({
             data: {
               content: fullResponse,
@@ -465,9 +532,11 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
               projectId: project.id,
             },
           });
+          
           console.log(`[${requestId}] AI response saved to database`, {
             projectId: project.id,
             responseLength: fullResponse.length,
+            responseAnalysis,
             timestamp: new Date().toISOString()
           });
         } catch (dbError) {

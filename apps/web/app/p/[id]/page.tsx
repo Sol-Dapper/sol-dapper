@@ -63,6 +63,7 @@ export default function ProjectPage(): JSX.Element {
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [streamingResponse, setStreamingResponse] = useState<string>("")
   const [projectFiles, setProjectFiles] = useState<string>("")
+  const [existingFiles, setExistingFiles] = useState<string>("") // Store existing files separately
 
   // Projects state for sidebar
   const [projects, setProjects] = useState<ProjectWithStatus[]>([])
@@ -99,16 +100,40 @@ export default function ProjectPage(): JSX.Element {
   useEffect(() => {
     if (project && project.prompts) {
       const systemPrompts = project.prompts.filter(prompt => prompt.type === 'SYSTEM')
+      
+      // If we have multiple system prompts, the "existing files" should be all but the last one
+      // This way the last response is treated as "new" and can be properly merged with boilerplate
+      const existingPrompts = systemPrompts.length > 1 ? systemPrompts.slice(0, -1) : []
+      const currentPrompts = systemPrompts.length > 0 ? [systemPrompts[systemPrompts.length - 1]] : []
+      
       const allFiles = systemPrompts
         .map(prompt => prompt.content)
         .join('\n\n')
       
-      setProjectFiles(allFiles)
+      const existingFilesContent = existingPrompts
+        .map(prompt => prompt.content)
+        .join('\n\n')
+      
+      const currentFilesContent = currentPrompts
+        .map(prompt => prompt?.content || '')
+        .join('\n\n')
+      
+      setProjectFiles(isGenerating ? allFiles : currentFilesContent)
+      setExistingFiles(existingFilesContent)
       
       // Determine if this is the first response based on existing system prompts
       setIsFirstResponse(systemPrompts.length === 0)
+      
+      console.log('Project files updated:', {
+        totalSystemPrompts: systemPrompts.length,
+        existingPrompts: existingPrompts.length,
+        currentPrompts: currentPrompts.length,
+        isGenerating,
+        isFirstResponse: systemPrompts.length === 0,
+        hasExistingFiles: existingFilesContent.length > 0
+      })
     }
-  }, [project])
+  }, [project, isGenerating])
 
   const loadProject = useCallback(async (): Promise<void> => {
     try {
@@ -217,6 +242,7 @@ export default function ProjectPage(): JSX.Element {
       }
 
       await loadProject()
+      setStreamingResponse("") // Clear streaming response after project reload
       setNewPrompt("")
     } catch (err) {
       console.error("Error sending prompt:", err)
@@ -278,6 +304,7 @@ export default function ProjectPage(): JSX.Element {
       }
 
       await loadProject()
+      setStreamingResponse("") // Clear streaming response after project reload
     } catch (err) {
       console.error("Error in initial generation:", err)
       setError(err instanceof Error ? err.message : "Failed to process initial request")
@@ -469,8 +496,9 @@ export default function ProjectPage(): JSX.Element {
                     {(projectFiles || streamingResponse) ? (
                       <div className="h-full p-4">
                         <AIResponseRenderer 
-                          response={streamingResponse ? `${projectFiles}\n\n${streamingResponse}` : projectFiles} 
-                          useBoilerplate={isFirstResponse && !projectFiles && !!streamingResponse}
+                          response={isGenerating && streamingResponse ? streamingResponse : projectFiles} 
+                          existingFiles={existingFiles}
+                          useBoilerplate={true}
                           isStreaming={isGenerating && !!streamingResponse}
                           hasExistingProject={!!projectFiles && !isFirstResponse}
                         />
