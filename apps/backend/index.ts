@@ -60,11 +60,20 @@ const app = express();
 
 // Configure CORS for streaming and cross-origin requests
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    process.env.FRONTEND_URL || 'http://localhost:3000'
-  ],
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      process.env.FRONTEND_URL || 'http://localhost:3000'
+    ];
+    
+    // Allow any URL ending with ngrok-free.app
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('ngrok-free.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
