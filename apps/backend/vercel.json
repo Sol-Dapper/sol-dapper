@@ -1,7 +1,21 @@
 {
   "version": 2,
   "name": "sol-dapper-backend",
-  "buildCommand": "cp -r ../../packages ./packages && bun install && bun run db:generate",
+  "buildCommand": "bun run build",
   "installCommand": "bun install",
-  "framework": null
+  "framework": null,
+  "functions": {
+    "api/*.ts": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.ts"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 }

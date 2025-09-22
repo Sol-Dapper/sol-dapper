@@ -5,8 +5,8 @@
   "scripts": {
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
-    "build": "bun run db:generate",
-    "start": "node index.ts",
+    "build": "bun run db:generate && bun build index.ts --outdir public --target bun",
+    "start": "node public/index.js",
     "dev": "bun --watch index.ts"
   },
   "dependencies": {
