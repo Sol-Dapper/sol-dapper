@@ -1,12 +1,12 @@
 {
   "version": 2,
   "name": "sol-dapper-backend",
-  "buildCommand": "bun run build",
+  "buildCommand": "cp -r ../../packages ./packages && bun install && bun run build",
   "installCommand": "bun install",
   "framework": null,
   "functions": {
     "api/*.ts": {
-      "runtime": "nodejs18.x"
+      "runtime": "@vercel/node@3"
     }
   },
   "routes": [

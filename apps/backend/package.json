@@ -5,7 +5,7 @@
   "scripts": {
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
-    "build": "bun run db:generate && bun build index.ts --outdir public --target bun",
+    "build": "bun run db:generate",
     "start": "node public/index.js",
     "dev": "bun --watch index.ts"
   },
@@ -23,6 +23,7 @@
     "@types/cors": "^2.8.19",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.13",
+    "@vercel/node": "^3.0.0",
     "typescript": "^5.8.2",
     "prisma": "^6.15.0"
   },
