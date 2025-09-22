@@ -58,6 +58,12 @@ function analyzeAIResponse(response: string): {
 
 const app = express();
 
+app.use((req, res, next) => {
+  req.setTimeout(0); // Disable timeout
+  res.setTimeout(1200000); // 20 minute timeout
+  next();
+});
+
 // Configure CORS for streaming and cross-origin requests
 app.use(cors({
   origin: true,
