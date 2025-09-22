@@ -30,9 +30,11 @@ interface AIResponseRendererProps {
   isStreaming?: boolean // Flag to indicate if response is being streamed
   hasExistingProject?: boolean // Flag to indicate if this is an existing project with files
   disableRuntime?: boolean // Flag to disable runtime/WebContainer integration
+  onParsedFiles?: (files: ParsedFile[]) => void // Callback to get parsed files for external mounting
+  terminalOutput?: string // Terminal output from project runtime
 }
 
-export function AIResponseRenderer({ response, existingFiles = "", useBoilerplate = true, isStreaming = false, hasExistingProject = false, disableRuntime = false }: AIResponseRendererProps) {
+export function AIResponseRenderer({ response, existingFiles = "", useBoilerplate = true, isStreaming = false, hasExistingProject = false, disableRuntime = false, onParsedFiles, terminalOutput }: AIResponseRendererProps) {
   const [selectedFileId, setSelectedFileId] = useState<string>('')
   const [selectedFile, setSelectedFile] = useState<ParsedFile | null>(null)
   const [parsedResponse, setParsedResponse] = useState<ParsedResponse | null>(null)
@@ -158,8 +160,8 @@ export function AIResponseRenderer({ response, existingFiles = "", useBoilerplat
         console.log('AIResponseRenderer - Merged response + existing (no boilerplate)')
       } else {
         // Just parse the response as-is
-        parsed = parser.parseResponse(response)
-        console.log('AIResponseRenderer - Standard parsing (no boilerplate, no existing)')
+        parsed = parser.parseResponse(response, isStreaming)
+        console.log('AIResponseRenderer - Standard parsing (no boilerplate, no existing)', 'isStreaming:', isStreaming)
       }
       
       // Only trigger WebContainer update if we're in runtime mode and have meaningful changes
@@ -168,6 +170,11 @@ export function AIResponseRenderer({ response, existingFiles = "", useBoilerplat
       }
       
       setParsedResponse(parsed)
+      
+      // Notify parent component about parsed files
+      if (onParsedFiles && parsed.files.length > 0) {
+        onParsedFiles(parsed.files)
+      }
       
       // Debug logging to see what files we actually have
       console.log('🔍 DEBUG - Final parsed response:', {
@@ -646,21 +653,19 @@ Generated on: ${new Date().toISOString()}
             </div>
           </div>
           
-          {parsedResponse.artifact!.shellCommands.length > 0 && (
+          {terminalOutput && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Terminal className="h-4 w-4" />
-                  Shell Commands
+                  Project Terminal
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {parsedResponse.artifact!.shellCommands.map((command, index) => (
-                    <div key={index} className="bg-muted/50 rounded-md p-3 font-mono text-sm">
-                      <code>{command}</code>
-                    </div>
-                  ))}
+                <div className="bg-black/90 rounded-md p-3 max-h-64 overflow-y-auto">
+                  <pre className="text-xs font-mono text-green-400 whitespace-pre-wrap">
+                    {terminalOutput}
+                  </pre>
                 </div>
               </CardContent>
             </Card>

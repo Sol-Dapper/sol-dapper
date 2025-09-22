@@ -27,6 +27,7 @@ export const basePrompt = `<forgeArtifact id="solana-project-import" title="Sola
       "clsx": "^2.1.1",
       "lucide-react": "^0.427.0",
       "next": "14.2.5",
+      "next-themes": "^0.3.0",
       "react": "^18.3.1",
       "react-dom": "^18.3.1",
       "react-hot-toast": "^2.4.1",
@@ -38,6 +39,7 @@ export const basePrompt = `<forgeArtifact id="solana-project-import" title="Sola
       "@types/node": "^20.14.14",
       "@types/react": "^18.3.3",
       "@types/react-dom": "^18.3.0",
+      "autoprefixer": "^10.4.20",
       "eslint": "^8.57.0",
       "eslint-config-next": "14.2.5",
       "postcss": "^8.4.40",
@@ -46,13 +48,29 @@ export const basePrompt = `<forgeArtifact id="solana-project-import" title="Sola
       "typescript": "^5.5.4"
     }
   }
-  </forgeAction><forgeAction type="file" filePath="next.config.ts">import type { NextConfig } from 'next';
-  
-  const nextConfig: NextConfig = {
-    reactStrictMode: true,
-  };
-  
-  export default nextConfig;
+  </forgeAction><forgeAction type="file" filePath="next.config.js">/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'require-corp',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+        ],
+      },
+    ];
+  },
+};
+
+module.exports = nextConfig;
   </forgeAction><forgeAction type="file" filePath="tsconfig.json">{
     "compilerOptions": {
       "lib": ["dom", "dom.iterable", "es6"],
@@ -514,4 +532,10 @@ export const basePrompt = `<forgeArtifact id="solana-project-import" title="Sola
   };
   
   export default config;
+  </forgeAction><forgeAction type="file" filePath="postcss.config.js">module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
   </forgeAction></forgeArtifact>`;

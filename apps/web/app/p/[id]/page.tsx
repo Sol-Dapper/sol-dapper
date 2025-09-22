@@ -93,10 +93,23 @@ export default function ProjectPage(): JSX.Element {
   const [terminalOutput, setTerminalOutput] = useState<string>('')
   const [steps, setSteps] = useState<ExecutionStep[]>([])
   const [view, setView] = useState<'code' | 'preview'>('code')
+  const [parsedFiles, setParsedFiles] = useState<ParsedFile[]>([])
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const terminalRef = useRef<HTMLPreElement>(null)
   
   const parser = new AIResponseParser()
+
+  // Function to clean ANSI codes from terminal output
+  const cleanAnsiCodes = (text: string) => {
+    // Remove ANSI escape sequences and cursor control codes
+    return text.replace(/\x1B\[[0-9;]*[JKmsu]/g, '')
+              .replace(/\x1B\[[0-9]*[ABCD]/g, '')
+              .replace(/\x1B\[2K/g, '')
+              .replace(/\x1B\[1G/g, '')
+              .replace(/\x1B\[0K/g, '')
+              .replace(/\x1B\[.*?m/g, '') // Remove all color codes
+              .replace(/\r/g, '') // Remove carriage returns
+  }
 
   useEffect(() => {
     if (authenticated && !webcontainer && !isBootingContainer) {
@@ -177,12 +190,16 @@ export default function ProjectPage(): JSX.Element {
         hasExistingFiles: existingFilesContent.length > 0
       })
 
-      // Mount files to WebContainer when they change
-      if (webcontainer && containerReady && allFiles && !isGenerating) {
-        mountProjectFiles(allFiles, existingFilesContent)
-      }
+      // This effect will be replaced by the onParsedFiles callback from AIResponseRenderer
     }
   }, [project, webcontainer, containerReady])
+
+  // Mount files to WebContainer when parsedFiles change
+  useEffect(() => {
+    if (webcontainer && containerReady && parsedFiles.length > 0) {
+      mountParsedFiles(parsedFiles)
+    }
+  }, [parsedFiles, webcontainer, containerReady])
 
   // Auto-scroll terminal output to bottom
   useEffect(() => {
@@ -213,6 +230,7 @@ export default function ProjectPage(): JSX.Element {
       container.on('server-ready', (port, url) => {
         console.log(`Server ready on port ${port}: ${url}`)
         setPreviewUrl(url)
+        setTerminalOutput(prev => prev + `\n🚀 Dev server ready at: ${url}\n`)
       })
 
       console.log('WebContainer booted successfully')
@@ -227,8 +245,8 @@ export default function ProjectPage(): JSX.Element {
     }
   }
 
-  const mountProjectFiles = async (allFilesContent: string, existingFilesContent: string) => {
-    if (!webcontainer || !containerReady || !allFilesContent.trim()) return
+  const mountParsedFiles = async (files: ParsedFile[]) => {
+    if (!webcontainer || !containerReady) return
 
     try {
       addStep({
@@ -237,17 +255,6 @@ export default function ProjectPage(): JSX.Element {
         status: 'running'
       })
 
-      // Parse all files using the XML parser
-      console.log('Raw AI response content (first 500 chars):', allFilesContent.substring(0, 500))
-      
-      const parsedResponse = existingFilesContent 
-        ? parser.parseResponseWithExistingFiles(allFilesContent, existingFilesContent)
-        : parser.parseResponse(allFilesContent)
-      
-      console.log('Parsed response:', parsedResponse)
-
-      const files = parsedResponse.files
-      
       if (files.length === 0) {
         console.log('No files to mount')
         updateStep('mount', { status: 'success', output: 'No files to mount' })
@@ -260,6 +267,9 @@ export default function ProjectPage(): JSX.Element {
       // Check if package.json is in the files
       const hasPackageJson = files.some(f => f.path === 'package.json' || f.path === '/package.json' || f.path.endsWith('/package.json'))
       console.log('Has package.json:', hasPackageJson)
+      
+      // Create a copy of files array so we can modify it
+      const filesToMount = [...files]
       
       // If no package.json is found, create a basic one
       if (!hasPackageJson) {
@@ -292,7 +302,7 @@ export default function ProjectPage(): JSX.Element {
           }, null, 2),
           language: 'json'
         }
-        files.push(basicPackageJson)
+        filesToMount.push(basicPackageJson)
         console.log('Added basic package.json to files')
       }
 
@@ -301,7 +311,7 @@ export default function ProjectPage(): JSX.Element {
 
       // Create directory structure first
       const directories = new Set<string>()
-      files.forEach(file => {
+      filesToMount.forEach(file => {
         const normalizedPath = file.path.replace(/^\/+/, '')
         const pathParts = normalizedPath.split('/').filter(Boolean)
         for (let i = 0; i < pathParts.length - 1; i++) {
@@ -325,7 +335,7 @@ export default function ProjectPage(): JSX.Element {
       })
 
       // Add files to file system tree
-      files.forEach(file => {
+      filesToMount.forEach(file => {
         // Normalize path - remove leading slashes and handle different path formats
         let normalizedPath = file.path.replace(/^\/+/, '')
         if (!normalizedPath) {
@@ -399,34 +409,82 @@ export default function ProjectPage(): JSX.Element {
         status: 'running'
       })
 
-      setTerminalOutput(prev => prev + '\n--- Installing dependencies ---\n')
+            setTerminalOutput(prev => prev + '\n--- Installing dependencies ---\n')
       
-      const installProcess = await webcontainer.spawn('npm', ['install'])
+      // Try npm install with registry and network optimizations
+      const installProcess = await webcontainer.spawn('npm', [
+        'install', 
+        '--no-package-lock', 
+        '--no-audit', 
+        '--no-fund',
+        '--registry=https://registry.npmjs.org/',
+        '--fetch-retries=3',
+        '--fetch-retry-mintimeout=20000',
+        '--fetch-retry-maxtimeout=120000',
+        '--maxsockets=1'
+      ])
       
       let output = ''
+      let outputReceived = false
       
-      // Set up output streaming without blocking
+      // Set up output streaming
       installProcess.output.pipeTo(new WritableStream({
         write(data) {
           output += data
-          setTerminalOutput(prev => prev + data)
-          console.log('npm install:', data) // Debug output
+          outputReceived = true
+          const cleanData = cleanAnsiCodes(data)
+          setTerminalOutput(prev => prev + cleanData)
+          console.log('npm install output:', cleanData)
+          
+          // Check for completion indicators
+          if (data.includes('packages installed') || data.includes('added') || data.includes('up to date')) {
+            console.log('Installation appears to be completing...')
+          }
         }
-      })).catch(console.error)
+      })).catch(err => {
+        console.error('Output stream error:', err)
+      })
 
-      // Wait for process to complete with timeout
-      const exitCode = await Promise.race([
-        installProcess.exit,
-        new Promise<number>((_, reject) => 
-          setTimeout(() => reject(new Error('Installation timeout after 120 seconds')), 120000)
-        )
-      ])
+      // Set up progressive timeout warnings
+      const timeouts: NodeJS.Timeout[] = []
       
-      if (exitCode !== 0) {
-        throw new Error(`npm install failed with exit code ${exitCode}`)
+      timeouts.push(setTimeout(() => {
+        setTerminalOutput(prev => prev + '\n[INFO] Installation in progress... (60s)\n')
+      }, 60000))
+      
+      timeouts.push(setTimeout(() => {
+        setTerminalOutput(prev => prev + '\n[INFO] Still installing dependencies... Network may be slow (120s)\n')
+      }, 120000))
+      
+      timeouts.push(setTimeout(() => {
+        setTerminalOutput(prev => prev + '\n[INFO] Large project installation continues... (180s)\n')
+      }, 180000))
+
+      try {
+        console.log('Starting npm install process...')
+        const exitCode = await installProcess.exit
+        timeouts.forEach(clearTimeout)
+        
+        console.log('npm install completed with exit code:', exitCode)
+        
+        if (exitCode !== 0) {
+          throw new Error(`npm install failed with exit code ${exitCode}`)
+        }
+        
+        // Verify installation worked
+        try {
+          await webcontainer.fs.readdir('/node_modules')
+          console.log('node_modules directory created successfully')
+        } catch {
+          console.warn('node_modules not found after install, but continuing...')
+        }
+        
+      } catch (error) {
+        timeouts.forEach(clearTimeout)
+        throw error
       }
 
-      updateStep('install', { status: 'success', output })
+        updateStep('install', { status: 'success', output })
       console.log('Dependencies installed successfully')
     } catch (err) {
       console.error('Failed to install dependencies:', err)
@@ -443,46 +501,81 @@ export default function ProjectPage(): JSX.Element {
 
     try {
       setIsRunning(true)
+      setTerminalOutput(prev => prev + '\n--- Starting Development Server ---\n')
       
-      // First install dependencies
-      await installDependencies()
+      // Check if dependencies are already installed
+      const installStep = steps.find(step => step.id === 'install')
+      const dependenciesInstalled = installStep?.status === 'success'
+      
+      if (!dependenciesInstalled) {
+        // First install dependencies
+        await installDependencies()
+      } else {
+        setTerminalOutput(prev => prev + '\n📦 Dependencies already installed, starting dev server...\n')
+      }
 
-      addStep({
-        id: 'dev',
-        name: 'Starting development server',
-        status: 'running'
-      })
+      setTerminalOutput(prev => prev + '\n--- Launching dev server ---\n')
 
       // Start the dev server
       const devProcess = await webcontainer.spawn('npm', ['run', 'dev'])
       setCurrentProcess(devProcess)
       
-      // Set up output streaming without blocking - dev server runs continuously
+      let serverStarted = false
+      
+      // Set up output streaming and detect server ready
       devProcess.output.pipeTo(new WritableStream({
         write(data) {
           setTerminalOutput(prev => prev + data)
+          console.log('Dev server output:', data)
           
-          // Check if server is ready based on output
-          if (data.includes('Local:') || data.includes('ready') || data.includes('localhost')) {
-            updateStep('dev', { status: 'success', output: 'Development server started' })
+          // More comprehensive server ready detection
+          const readyIndicators = [
+            'Local:',
+            'localhost:',
+            'ready -',
+            'ready on',
+            'started server on',
+            'server started on',
+            'running at',
+            'listening on',
+            'available on',
+            'http://localhost',
+            '➜  Local:'
+          ]
+          
+          const isReady = readyIndicators.some(indicator => 
+            data.toLowerCase().includes(indicator.toLowerCase())
+          )
+          
+          if (isReady && !serverStarted) {
+            serverStarted = true
+            setTerminalOutput(prev => prev + '\n🚀 Development server is ready!\n')
+            console.log('Development server detected as ready')
           }
         }
       })).catch(console.error)
 
-      // Dev server doesn't exit normally, so we mark it as started after a short delay
-      setTimeout(() => {
-        if (isRunning) {
-          updateStep('dev', { status: 'success', output: 'Development server is running' })
+      // Monitor the process
+      devProcess.exit.then(exitCode => {
+        console.log('Dev server process exited with code:', exitCode)
+        setIsRunning(false)
+        setCurrentProcess(null)
+        if (exitCode !== 0) {
+          setTerminalOutput(prev => prev + `\n❌ Dev server exited with code ${exitCode}\n`)
         }
-      }, 3000)
+      }).catch(err => {
+        console.error('Dev server process error:', err)
+        setIsRunning(false)
+        setCurrentProcess(null)
+        setTerminalOutput(prev => prev + `\n❌ Dev server error: ${err}\n`)
+      })
 
       console.log('Development server process started')
+      setTerminalOutput(prev => prev + 'Development server starting...\n')
+      
     } catch (err) {
       console.error('Failed to start dev server:', err)
-      updateStep('dev', { 
-        status: 'error', 
-        output: err instanceof Error ? err.message : 'Unknown error'
-      })
+      setTerminalOutput(prev => prev + `\n❌ Failed to start dev server: ${err}\n`)
       setIsRunning(false)
     }
   }
@@ -493,6 +586,7 @@ export default function ProjectPage(): JSX.Element {
       setCurrentProcess(null)
       setIsRunning(false)
       setPreviewUrl('')
+      setTerminalOutput(prev => prev + '\n🛑 Development server stopped\n')
       addStep({
         id: 'stop',
         name: 'Stopped development server',
@@ -892,6 +986,61 @@ export default function ProjectPage(): JSX.Element {
                         </>
                       )}
                     </Button>
+
+                    <Button
+                      onClick={async () => {
+                        if (!webcontainer || !containerReady) return
+                        
+                        try {
+                          // Kill any running processes first
+                          if (currentProcess) {
+                            currentProcess.kill()
+                            setCurrentProcess(null)
+                            setTerminalOutput(prev => prev + '\n🛑 Stopped previous installation process\n')
+                          }
+                          
+                          setTerminalOutput(prev => prev + '\n--- Installing with pnpm (faster alternative) ---\n')
+                          const pnpmInstall = await webcontainer.spawn('pnpm', [
+                            'install', 
+                            '--no-frozen-lockfile',
+                            '--registry=https://registry.npmjs.org/',
+                            '--fetch-timeout=300000',
+                            '--fetch-retries=3'
+                          ])
+                          
+                          pnpmInstall.output.pipeTo(new WritableStream({
+                            write(data) {
+                              const cleanData = cleanAnsiCodes(data)
+                              setTerminalOutput(prev => prev + cleanData)
+                            }
+                          })).catch(console.error)
+                          
+                          const exitCode = await pnpmInstall.exit
+                          if (exitCode === 0) {
+                            setTerminalOutput(prev => prev + '\n✅ pnpm install completed successfully!\n')
+                            // Mark installation as complete so dev server can start
+                            addStep({
+                              id: 'install',
+                              name: 'Dependencies installed (pnpm)',
+                              status: 'success'
+                            })
+                          } else {
+                            setTerminalOutput(prev => prev + `\n❌ pnpm install failed with exit code ${exitCode}\n`)
+                            addStep({
+                              id: 'install',
+                              name: 'pnpm install failed',
+                              status: 'error'
+                            })
+                          }
+                        } catch (err) {
+                          setTerminalOutput(prev => prev + `\n❌ pnpm install error: ${err}\n`)
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Try pnpm (Faster)
+                    </Button>
                     
                     <Button
                       onClick={stopDevServer}
@@ -903,16 +1052,77 @@ export default function ProjectPage(): JSX.Element {
                       Stop
                     </Button>
 
-                    {previewUrl && (
-                      <Button
-                        onClick={() => window.open(previewUrl, '_blank')}
-                        variant="outline"
-                        size="sm"
-                      >
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Open in New Tab
-                      </Button>
-                    )}
+                    <Button
+                      onClick={async () => {
+                        if (!webcontainer || !containerReady) return
+                        
+                        try {
+                          // Kill any running processes first
+                          if (currentProcess) {
+                            currentProcess.kill()
+                            setCurrentProcess(null)
+                            setTerminalOutput(prev => prev + '\n🛑 Stopped previous installation process\n')
+                          }
+                          
+                          setTerminalOutput(prev => prev + '\n--- Installing minimal dependencies ---\n')
+                          // Try installing with minimal flags and offline cache
+                          const minimalInstall = await webcontainer.spawn('npm', [
+                            'install', 
+                            '--prefer-offline',
+                            '--no-audit',
+                            '--no-fund',
+                            '--production',
+                            '--silent'
+                          ])
+                          
+                          minimalInstall.output.pipeTo(new WritableStream({
+                            write(data) {
+                              const cleanData = cleanAnsiCodes(data)
+                              setTerminalOutput(prev => prev + cleanData)
+                            }
+                          })).catch(console.error)
+                          
+                          const exitCode = await minimalInstall.exit
+                          if (exitCode === 0) {
+                            setTerminalOutput(prev => prev + '\n✅ Minimal install completed!\n')
+                            addStep({
+                              id: 'install',
+                              name: 'Minimal dependencies installed',
+                              status: 'success'
+                            })
+                          } else {
+                            addStep({
+                              id: 'install',
+                              name: 'Minimal install failed',
+                              status: 'error'
+                            })
+                          }
+                        } catch (err) {
+                          setTerminalOutput(prev => prev + `\n❌ Minimal install error: ${err}\n`)
+                        }
+                      }}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Minimal Install
+                    </Button>
+
+                    <Button
+                      onClick={() => {
+                        // Force reset all states
+                        setIsRunning(false)
+                        setCurrentProcess(null)
+                        setSteps([])
+                        setTerminalOutput(prev => prev + '\n--- Force reset all processes ---\n')
+                        console.log('Force reset triggered')
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Force Reset
+                    </Button>
+
+
 
                     <Button
                       onClick={async () => {
@@ -947,9 +1157,12 @@ export default function ProjectPage(): JSX.Element {
                       onClick={() => {
                         console.log('Current project data:', project)
                         console.log('Project files content:', projectFiles.substring(0, 1000))
+                        console.log('Parsed files for mounting:', parsedFiles)
                         setTerminalOutput(prev => prev + `\n--- Current Project Info ---\n`)
                         setTerminalOutput(prev => prev + `Project ID: ${project?.id}\n`)
                         setTerminalOutput(prev => prev + `Project files length: ${projectFiles.length}\n`)
+                        setTerminalOutput(prev => prev + `Parsed files count: ${parsedFiles.length}\n`)
+                        setTerminalOutput(prev => prev + `Parsed files: ${parsedFiles.map(f => f.path).join(', ')}\n`)
                         setTerminalOutput(prev => prev + `Has existing files: ${!!existingFiles}\n`)
                         setTerminalOutput(prev => prev + `Files content preview: ${projectFiles.substring(0, 500)}...\n`)
                       }}
@@ -960,57 +1173,24 @@ export default function ProjectPage(): JSX.Element {
                     </Button>
                   </div>
 
-                  {/* Execution Steps */}
-                  {steps.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium">Execution Steps</h4>
-                      <div className="space-y-1">
-                        {steps.map((step) => (
-                          <div key={step.id} className="flex items-center gap-2 text-sm">
-                            {step.status === 'running' && (
-                              <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-                            )}
-                            {step.status === 'success' && (
-                              <div className="h-3 w-3 rounded-full bg-green-500" />
-                            )}
-                            {step.status === 'error' && (
-                              <div className="h-3 w-3 rounded-full bg-red-500" />
-                            )}
-                            {step.status === 'idle' && (
-                              <div className="h-3 w-3 rounded-full bg-gray-400" />
-                            )}
-                            <span className={step.status === 'error' ? 'text-destructive' : ''}>{step.name}</span>
-                          </div>
-                        ))}
-                      </div>
+                  {/* Terminal actions */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Terminal className="h-4 w-4" />
+                      <h4 className="text-sm font-medium">Terminal Actions</h4>
+                      <Button
+                        onClick={() => setTerminalOutput('')}
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                      </Button>
                     </div>
-                  )}
-
-                  {/* Terminal Output */}
-                  {terminalOutput && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Terminal className="h-4 w-4" />
-                        <h4 className="text-sm font-medium">Terminal Output</h4>
-                        <Button
-                          onClick={() => setTerminalOutput('')}
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                        >
-                          <RefreshCw className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      <ScrollArea className="h-32 rounded border bg-black/5 p-2">
-                        <pre 
-                          ref={terminalRef}
-                          className="text-xs font-mono text-foreground/80 whitespace-pre-wrap"
-                        >
-                          {terminalOutput}
-                        </pre>
-                      </ScrollArea>
-                    </div>
-                  )}
+                    <p className="text-xs text-muted-foreground">
+                      Terminal output is shown in the main content area when available.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -1029,22 +1209,22 @@ export default function ProjectPage(): JSX.Element {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <Button
-                        onClick={() => setView('code')}
-                        variant={view === 'code' ? 'default' : 'outline'}
-                        size="sm"
-                      >
-                        Code
-                      </Button>
-                      <Button
-                        onClick={() => setView('preview')}
-                        variant={view === 'preview' ? 'default' : 'outline'}
-                        size="sm"
-                        disabled={!previewUrl}
-                      >
-                        Preview
-                      </Button>
-                    </div>
+                                              <Button
+                          onClick={() => setView('code')}
+                          variant={view === 'code' ? 'default' : 'outline'}
+                          size="sm"
+                        >
+                          Code
+                        </Button>
+                        <Button
+                          onClick={() => setView('preview')}
+                          variant={view === 'preview' ? 'default' : 'outline'}
+                          size="sm"
+                          disabled={!previewUrl}
+                        >
+                          Preview
+                        </Button>
+                      </div>
                     {isGenerating && (
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -1058,23 +1238,28 @@ export default function ProjectPage(): JSX.Element {
                   <div className="h-full">
                     {view === 'code' ? (
                       (projectFiles || streamingResponse) ? (
-                      <div className="h-full p-4">
-                                                  <AIResponseRenderer 
+                        <div className="h-full p-4">
+                          <AIResponseRenderer 
                             response={isGenerating && streamingResponse ? streamingResponse : projectFiles} 
                             existingFiles={existingFiles}
                             useBoilerplate={true}
                             isStreaming={isGenerating && !!streamingResponse}
                             hasExistingProject={!!projectFiles && !isFirstResponse}
                             disableRuntime={true}
+                            onParsedFiles={(files) => {
+                              console.log('Received parsed files from AIResponseRenderer:', files.length)
+                              setParsedFiles(files)
+                            }}
+                            terminalOutput={terminalOutput}
                           />
-                      </div>
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <div className="text-center">
-                          <div className="mb-6 text-6xl text-muted-foreground">📁</div>
-                          <h3 className="text-lg font-semibold mb-2">No Project Files Yet</h3>
-                          <p className="text-muted-foreground leading-relaxed">Generate your first AI response with code to see files appear in the file tree and Monaco editor</p>
                         </div>
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <div className="text-center">
+                            <div className="mb-6 text-6xl text-muted-foreground">📁</div>
+                            <h3 className="text-lg font-semibold mb-2">No Project Files Yet</h3>
+                            <p className="text-muted-foreground leading-relaxed">Generate your first AI response with code to see files appear in the file tree and Monaco editor</p>
+                          </div>
                         </div>
                       )
                     ) : (

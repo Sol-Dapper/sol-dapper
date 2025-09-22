@@ -53,8 +53,8 @@ export class AIResponseParser {
   /**
    * Parse AI response text that may contain XML tags for files, code, etc.
    */
-  parseResponse(response: string): ParsedResponse {
-    console.log('XML Parser - Input response:', response);
+  parseResponse(response: string, isStreaming: boolean = false): ParsedResponse {
+    console.log('XML Parser - Input response:', response, 'isStreaming:', isStreaming);
     
     const result: ParsedResponse = {
       files: [],
@@ -62,8 +62,13 @@ export class AIResponseParser {
       codeBlocks: [],
     };
 
-    // Extract and parse forgeArtifact specifically
-    this.parseForgeArtifactDirectly(response, result);
+    // For streaming responses, try to extract partial content
+    if (isStreaming) {
+      this.parseStreamingContent(response, result);
+    } else {
+      // Extract and parse forgeArtifact specifically
+      this.parseForgeArtifactDirectly(response, result);
+    }
 
     // Extract code blocks (markdown style) as fallback
     result.codeBlocks.push(...this.extractCodeBlocks(response));
@@ -85,8 +90,8 @@ export class AIResponseParser {
    */
   parseResponseWithBoilerplate(response: string, boilerplateComponents: string): ParsedResponse {
     console.log('XML Parser - Adding boilerplate to fill gaps in AI response');
-    const aiResult = this.parseResponse(response);
-    const boilerplateResult = this.parseResponse(boilerplateComponents);
+    const aiResult = this.parseResponse(response, false);
+    const boilerplateResult = this.parseResponse(boilerplateComponents, false);
     
     console.log('XML Parser - AI response parsed:', {
       files: aiResult.files.length,
@@ -154,10 +159,10 @@ export class AIResponseParser {
     console.log('XML Parser - Merging new AI response with existing files');
     
     // Parse the new AI response
-    const newResult = this.parseResponse(newResponse);
+    const newResult = this.parseResponse(newResponse, false);
     
     // Parse existing files
-    const existingResult = this.parseResponse(existingFiles);
+    const existingResult = this.parseResponse(existingFiles, false);
     
     console.log('XML Parser - New AI response parsed:', {
       files: newResult.files.length,
@@ -242,6 +247,174 @@ export class AIResponseParser {
     });
     
     return mergedResult;
+  }
+
+  /**
+   * Parse streaming content - handles incomplete XML during generation
+   */
+  private parseStreamingContent(response: string, result: ParsedResponse) {
+    console.log('XML Parser - Parsing streaming content');
+    
+    // Look for the start of a forgeArtifact block
+    const artifactStartRegex = /<forgeArtifact\s+([^>]*)>/i;
+    const artifactStartMatch = artifactStartRegex.exec(response);
+    
+    if (!artifactStartMatch) {
+      console.log('XML Parser - No forgeArtifact start found in streaming content');
+      return;
+    }
+
+    // Extract attributes from the opening tag
+    const attributes = artifactStartMatch[1] || '';
+    const idMatch = attributes.match(/id=["']([^"']*)["']/i);
+    const titleMatch = attributes.match(/title=["']([^"']*)["']/i);
+    
+    const artifactId = (idMatch && idMatch[1]) || 'streaming-project';
+    const title = (titleMatch && titleMatch[1]) || 'Streaming Project';
+    
+    // Set artifact metadata
+    result.artifact = {
+      id: artifactId,
+      title: title,
+      shellCommands: [],
+    };
+
+    // Get content after the opening tag
+    const contentStart = artifactStartMatch.index! + artifactStartMatch[0].length;
+    const contentAfterTag = response.substring(contentStart);
+    
+    // Look for any complete forgeAction elements
+    const actionRegex = /<forgeAction\s+([^>]*?)>([\s\S]*?)<\/forgeAction>/gi;
+    let actionMatch;
+    
+    console.log('XML Parser - Searching for complete forgeAction elements in streaming content...');
+    
+    while ((actionMatch = actionRegex.exec(contentAfterTag)) !== null) {
+      const actionAttributes = actionMatch[1] || '';
+      const actionContent = actionMatch[2] || '';
+      
+      // Parse attributes
+      const typeMatch = actionAttributes.match(/type=["']?([^"'\s]*)["']?/i);
+      const filePathMatch = actionAttributes.match(/filePath=["']?([^"'\s]*)["']?/i);
+      
+      const type = typeMatch ? typeMatch[1] : '';
+      const filePath = filePathMatch ? filePathMatch[1] : '';
+      
+      console.log('XML Parser - Found streaming forgeAction:', { type, filePath });
+
+      if (type === 'file' && filePath && actionContent) {
+        // Handle file actions
+        const fileName = this.extractFileName(filePath);
+        const content = actionContent.trim();
+        
+        // Create directory structure if needed
+        const directories = this.getDirectoriesFromPath(filePath);
+        directories.forEach(dirPath => {
+          const dirName = this.extractFileName(dirPath);
+          const existingDir = result.directories.find(d => d.path === dirPath);
+          if (!existingDir) {
+            const parsedDir: ParsedFile = {
+              id: `dir-${dirPath.replace(/[^a-zA-Z0-9]/g, '-')}`,
+              name: dirName,
+              path: dirPath,
+              content: '',
+              language: '',
+              isDirectory: true,
+              children: []
+            };
+            console.log('XML Parser - Adding streaming directory:', parsedDir);
+            result.directories.push(parsedDir);
+          }
+        });
+        
+        // Check if file already exists (handle duplicates)
+        const existingFileIndex = result.files.findIndex(f => f.path === filePath);
+        if (existingFileIndex >= 0) {
+          // Update existing file (later files override earlier ones)
+          result.files[existingFileIndex] = {
+            id: `file-${filePath.replace(/[^a-zA-Z0-9]/g, '-')}`,
+            name: fileName,
+            path: filePath,
+            content: content,
+            language: this.detectLanguage(fileName),
+          };
+          console.log('XML Parser - Updating existing streaming file:', filePath);
+        } else {
+          // Add new file
+          const parsedFile: ParsedFile = {
+            id: `file-${filePath.replace(/[^a-zA-Z0-9]/g, '-')}`,
+            name: fileName,
+            path: filePath,
+            content: content,
+            language: this.detectLanguage(fileName),
+          };
+          
+          console.log('XML Parser - Adding new streaming file:', parsedFile);
+          result.files.push(parsedFile);
+        }
+
+        // Also add as code block for display
+        const existingCodeBlock = result.codeBlocks.find(cb => cb.filename === filePath);
+        if (!existingCodeBlock) {
+          result.codeBlocks.push({
+            id: `code-${filePath.replace(/[^a-zA-Z0-9]/g, '-')}`,
+            language: this.detectLanguage(fileName),
+            content: content,
+            filename: filePath,
+          });
+        }
+      } else if (type === 'shell') {
+        // Handle shell commands
+        if (actionContent.trim()) {
+          result.artifact.shellCommands.push(actionContent.trim());
+        }
+      }
+    }
+
+    // Also look for incomplete forgeAction elements (still being written)
+    const incompleteActionRegex = /<forgeAction\s+([^>]*?)>([\s\S]*?)$/i;
+    const incompleteMatch = incompleteActionRegex.exec(contentAfterTag);
+    
+    if (incompleteMatch) {
+      const actionAttributes = incompleteMatch[1] || '';
+      const partialContent = incompleteMatch[2] || '';
+      
+      // Parse attributes
+      const typeMatch = actionAttributes.match(/type=["']?([^"'\s]*)["']?/i);
+      const filePathMatch = actionAttributes.match(/filePath=["']?([^"'\s]*)["']?/i);
+      
+      const type = typeMatch ? typeMatch[1] : '';
+      const filePath = filePathMatch ? filePathMatch[1] : '';
+      
+      if (type === 'file' && filePath && partialContent.length > 10) {
+        console.log('XML Parser - Found incomplete streaming file:', filePath);
+        
+        const fileName = this.extractFileName(filePath);
+        const content = partialContent.trim();
+        
+        // Add as a streaming file (will be updated as more content arrives)
+        const parsedFile: ParsedFile = {
+          id: `streaming-${filePath.replace(/[^a-zA-Z0-9]/g, '-')}`,
+          name: fileName + ' (streaming...)',
+          path: filePath,
+          content: content,
+          language: this.detectLanguage(fileName),
+        };
+        
+        // Check if we already have this file and update it
+        const existingIndex = result.files.findIndex(f => f.path === filePath);
+        if (existingIndex >= 0) {
+          result.files[existingIndex] = parsedFile;
+        } else {
+          result.files.push(parsedFile);
+        }
+      }
+    }
+    
+    console.log('XML Parser - Streaming parse complete. Found:', {
+      files: result.files.length,
+      directories: result.directories.length
+    });
   }
 
   /**
