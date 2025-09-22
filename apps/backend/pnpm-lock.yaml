@@ -10,16 +10,16 @@ importers:
     dependencies:
       '@ai-sdk/anthropic':
         specifier: ^2.0.17
-        version: 2.0.17(zod@3.25.64)
+        version: 2.0.17(zod@4.1.11)
       '@ai-sdk/openai':
         specifier: ^2.0.30
-        version: 2.0.32(zod@3.25.64)
+        version: 2.0.32(zod@4.1.11)
       '@prisma/client':
         specifier: ^6.15.0
         version: 6.16.2(prisma@6.16.2(typescript@5.9.2))(typescript@5.9.2)
       ai:
         specifier: ^5.0.44
-        version: 5.0.48(zod@3.25.64)
+        version: 5.0.48(zod@4.1.11)
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -30,8 +30,8 @@ importers:
         specifier: ^5.2.0
         version: 5.10.0
       zod:
-        specifier: 3.25.64
-        version: 3.25.64
+        specifier: ^4.1.11
+        version: 4.1.11
     devDependencies:
       '@types/cors':
         specifier: ^2.8.19
@@ -742,35 +742,35 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  zod@3.25.64:
-    resolution: {integrity: sha512-hbP9FpSZf7pkS7hRVUrOjhwKJNyampPgtXKc3AN6DsWtoHsg2Sb4SQaS4Tcay380zSwd2VPo9G9180emBACp5g==}
+  zod@4.1.11:
+    resolution: {integrity: sha512-WPsqwxITS2tzx1bzhIKsEs19ABD5vmCVa4xBo2tq/SrV4RNZtfws1EnCWQXM6yh8bD08a1idvkB5MZSBiZsjwg==}
 
 snapshots:
 
-  '@ai-sdk/anthropic@2.0.17(zod@3.25.64)':
+  '@ai-sdk/anthropic@2.0.17(zod@4.1.11)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.9(zod@3.25.64)
-      zod: 3.25.64
+      '@ai-sdk/provider-utils': 3.0.9(zod@4.1.11)
+      zod: 4.1.11
 
-  '@ai-sdk/gateway@1.0.25(zod@3.25.64)':
+  '@ai-sdk/gateway@1.0.25(zod@4.1.11)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.9(zod@3.25.64)
-      zod: 3.25.64
+      '@ai-sdk/provider-utils': 3.0.9(zod@4.1.11)
+      zod: 4.1.11
 
-  '@ai-sdk/openai@2.0.32(zod@3.25.64)':
+  '@ai-sdk/openai@2.0.32(zod@4.1.11)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.9(zod@3.25.64)
-      zod: 3.25.64
+      '@ai-sdk/provider-utils': 3.0.9(zod@4.1.11)
+      zod: 4.1.11
 
-  '@ai-sdk/provider-utils@3.0.9(zod@3.25.64)':
+  '@ai-sdk/provider-utils@3.0.9(zod@4.1.11)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
       '@standard-schema/spec': 1.0.0
       eventsource-parser: 3.0.6
-      zod: 3.25.64
+      zod: 4.1.11
 
   '@ai-sdk/provider@2.0.0':
     dependencies:
@@ -955,13 +955,13 @@ snapshots:
       mime-types: 2.1.35
       negotiator: 0.6.3
 
-  ai@5.0.48(zod@3.25.64):
+  ai@5.0.48(zod@4.1.11):
     dependencies:
-      '@ai-sdk/gateway': 1.0.25(zod@3.25.64)
+      '@ai-sdk/gateway': 1.0.25(zod@4.1.11)
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.9(zod@3.25.64)
+      '@ai-sdk/provider-utils': 3.0.9(zod@4.1.11)
       '@opentelemetry/api': 1.9.0
-      zod: 3.25.64
+      zod: 4.1.11
 
   array-flatten@1.1.1: {}
 
@@ -1421,4 +1421,4 @@ snapshots:
 
   vary@1.1.2: {}
 
-  zod@3.25.64: {}
+  zod@4.1.11: {}
