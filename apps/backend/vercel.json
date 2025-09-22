@@ -1,7 +1,7 @@
 {
   "version": 2,
   "name": "my-backend",
-  "buildCommand": "cp -r ../../packages ./packages && pnpm install && pnpm run build",
+  "buildCommand": "pnpm run build",
   "devCommand": "pnpm run dev",
   "installCommand": "pnpm install",
   "framework": null,
