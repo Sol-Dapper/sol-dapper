@@ -1,14 +1,14 @@
 {
   "version": 2,
   "name": "my-backend",
-  "buildCommand": "cp -r ../../packages ./packages && bun install && bun run build",
-  "devCommand": "bun run dev",
-  "installCommand": "bun install",
+  "buildCommand": "cp -r ../../packages ./packages && pnpm install && pnpm run build",
+  "devCommand": "pnpm run dev",
+  "installCommand": "pnpm install",
   "framework": null,
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "public/index.js"
+      "dest": "dist/index.js"
     }
   ]
 }

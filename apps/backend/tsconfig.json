@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
+    "module": "CommonJS",
     "moduleResolution": "node",
     "outDir": "./dist",
     "rootDir": "./",
@@ -11,15 +11,13 @@
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+    "sourceMap": false,
     "baseUrl": ".",
     "paths": {
-      "@/db/*": ["../packages/db/*"],
+      "@/db/*": ["./packages/db/*"],
       "@/lib/*": ["./lib/*"]
     }
   },
-  "include": ["**/*.ts", "../packages/db/**/*.ts"],
+  "include": ["**/*.ts", "./packages/db/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
