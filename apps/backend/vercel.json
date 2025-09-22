@@ -1,14 +1,7 @@
 {
   "version": 2,
-  "name": "my-backend",
-  "buildCommand": "cp -r ../../packages ./packages && bun install && bun run build",
-  "devCommand": "bun run dev",
+  "name": "sol-dapper-backend",
+  "buildCommand": "cp -r ../../packages ./packages && bun install && bun run db:generate",
   "installCommand": "bun install",
-  "framework": null,
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "dist/index.js"
-    }
-  ]
+  "framework": null
 }
