@@ -29,9 +29,10 @@ interface AIResponseRendererProps {
   useBoilerplate?: boolean // Flag to enable/disable boilerplate integration
   isStreaming?: boolean // Flag to indicate if response is being streamed
   hasExistingProject?: boolean // Flag to indicate if this is an existing project with files
+  disableRuntime?: boolean // Flag to disable runtime/WebContainer integration
 }
 
-export function AIResponseRenderer({ response, existingFiles = "", useBoilerplate = true, isStreaming = false, hasExistingProject = false }: AIResponseRendererProps) {
+export function AIResponseRenderer({ response, existingFiles = "", useBoilerplate = true, isStreaming = false, hasExistingProject = false, disableRuntime = false }: AIResponseRendererProps) {
   const [selectedFileId, setSelectedFileId] = useState<string>('')
   const [selectedFile, setSelectedFile] = useState<ParsedFile | null>(null)
   const [parsedResponse, setParsedResponse] = useState<ParsedResponse | null>(null)
@@ -516,7 +517,7 @@ Generated on: ${new Date().toISOString()}
             )}
             <div className="ml-auto flex items-center gap-2">
               {/* View Mode Toggle */}
-              <div className="flex rounded-lg border border-border/50 p-1">
+                            <div className="flex rounded-lg border border-border/50 p-1">
                 <Button
                   variant={viewMode === 'code' ? 'default' : 'ghost'}
                   size="sm"
@@ -526,7 +527,8 @@ Generated on: ${new Date().toISOString()}
                   <Code className="h-4 w-4" />
                   Code
                 </Button>
-                                  <Button
+                {!disableRuntime && (
+                  <Button
                     variant={viewMode === 'runtime' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => {
@@ -541,6 +543,7 @@ Generated on: ${new Date().toISOString()}
                     <Play className="h-4 w-4" />
                     Run
                   </Button>
+                )}
               </div>
               
               <Button
@@ -557,7 +560,7 @@ Generated on: ${new Date().toISOString()}
             </div>
           </div>
           
-          {viewMode === 'code' ? (
+          {viewMode === 'code' || disableRuntime ? (
             <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
               {/* File Tree */}
               <Card>
@@ -615,15 +618,17 @@ Generated on: ${new Date().toISOString()}
               </div>
             </div>
           ) : (
-            <WebContainerRunner 
-              files={parsedResponse.files} 
-              isVisible={viewMode === 'runtime'}
-              shouldUpdateFiles={shouldUpdateWebContainer}
-              onFilesUpdated={() => {
-                setShouldUpdateWebContainer(false)
-                setLastSyncedFileCount(parsedResponse.files.length)
-              }}
-            />
+            !disableRuntime && (
+              <WebContainerRunner 
+                files={parsedResponse.files} 
+                isVisible={viewMode === 'runtime'}
+                shouldUpdateFiles={shouldUpdateWebContainer}
+                onFilesUpdated={() => {
+                  setShouldUpdateWebContainer(false)
+                  setLastSyncedFileCount(parsedResponse.files.length)
+                }}
+              />
+            )
           )}
         </div>
       )}
