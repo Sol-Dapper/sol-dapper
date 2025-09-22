@@ -502,8 +502,14 @@ export class AIResponseParser {
       const commandMatch = attributes.match(/command=["']?([^"'\s]*)["']?/i);
       
       const type = typeMatch ? typeMatch[1] : '';
-      const filePath = filePathMatch ? filePathMatch[1] : '';
+      const rawFilePath = filePathMatch ? filePathMatch[1] : '';
+      const filePath = rawFilePath ? this.stripTopLevelFolder(rawFilePath) : '';
       const command = commandMatch ? commandMatch[1] : '';
+      
+      // Debug logging for path stripping
+      if (rawFilePath && rawFilePath !== filePath) {
+        console.log(`🔧 XML Parser - Stripped path: "${rawFilePath}" → "${filePath}"`);
+      }
       
       console.log('XML Parser - Found forgeArtifact:', { 
         fullMatch: fullMatch.substring(0, 200) + '...',
@@ -657,6 +663,36 @@ export class AIResponseParser {
    */
   private extractFileName(filePath: string): string {
     return filePath.split('/').pop() || filePath;
+  }
+
+  /**
+   * Normalize file paths for comparison (remove leading slashes, handle case sensitivity)
+   */
+  private normalizePath(filePath: string): string {
+    return filePath.replace(/^\/+/, '').toLowerCase();
+  }
+
+  /**
+   * Remove top-level project folder from AI-generated paths
+   * Example: "todo-dapp/src/app/page.tsx" -> "src/app/page.tsx"
+   */
+  private stripTopLevelFolder(filePath: string): string {
+    const cleanPath = filePath.replace(/^\/+/, ''); // Remove leading slashes
+    const parts = cleanPath.split('/');
+    
+    // If path has more than 1 part and starts with a project folder name (not src, public, etc.)
+    if (parts.length > 1 && parts[0]) {
+      const firstPart = parts[0].toLowerCase();
+      const validTopLevelFolders = ['src', 'public', 'pages', 'components', 'lib', 'app', 'styles', 'utils', 'hooks', 'types', 'config', 'anchor', 'tests'];
+      
+      // If first part is NOT a valid top-level folder, it's probably an AI-generated project name
+      if (!validTopLevelFolders.includes(firstPart) && !firstPart.startsWith('.')) {
+        console.log(`XML Parser - Stripping top-level folder "${parts[0]}" from path: ${filePath}`);
+        return parts.slice(1).join('/'); // Remove first part
+      }
+    }
+    
+    return cleanPath; // Return as-is if no stripping needed
   }
 
   /**

@@ -114,10 +114,17 @@ export function AIResponseRenderer({ response, existingFiles = "", useBoilerplat
       fetchBoilerplateComponents()
         .then(components => {
           setBoilerplateComponents(components)
-          console.log('AIResponseRenderer - Boilerplate components fetched:', components ? 'success' : 'empty')
+          const uiComponentCount = (components.match(/src\/components\/ui\//g) || []).length;
+          console.log('🔧 AIResponseRenderer - Boilerplate fetched:', {
+            success: !!components,
+            length: components.length,
+            uiComponents: uiComponentCount,
+            hasUIDirectory: components.includes('src/components/ui'),
+            sample: components.substring(0, 200) + '...'
+          })
         })
         .catch(error => {
-          console.error('AIResponseRenderer - Failed to fetch boilerplate:', error)
+          console.error('❌ AIResponseRenderer - Failed to fetch boilerplate:', error)
           setBoilerplateComponents('') // Fallback to empty
         })
         .finally(() => {
@@ -147,22 +154,43 @@ export function AIResponseRenderer({ response, existingFiles = "", useBoilerplat
         if (existingFiles) {
           // We have existing files - merge everything with boilerplate
           parsed = parser.parseResponseWithExistingFiles(response, existingFiles, boilerplateComponents)
-          console.log('AIResponseRenderer - Merged response + existing + boilerplate')
+          console.log('🔄 AIResponseRenderer - Merged response + existing + boilerplate')
         } else {
-          // No existing files - merge response with boilerplate
+          // No existing files - merge response with boilerplate (ALWAYS for new projects)
           parsed = parser.parseResponseWithBoilerplate(response, boilerplateComponents)
-          console.log('AIResponseRenderer - Merged response + boilerplate')
+          console.log('🔄 AIResponseRenderer - Merged response + boilerplate')
         }
         setBoilerplateApplied(true)
       } else if (existingFiles) {
         // No boilerplate available but we have existing files
         parsed = parser.parseResponseWithExistingFiles(response, existingFiles)
-        console.log('AIResponseRenderer - Merged response + existing (no boilerplate)')
+        console.log('🔄 AIResponseRenderer - Merged response + existing (no boilerplate)')
       } else {
         // Just parse the response as-is
         parsed = parser.parseResponse(response, isStreaming)
-        console.log('AIResponseRenderer - Standard parsing (no boilerplate, no existing)', 'isStreaming:', isStreaming)
+        console.log('🔄 AIResponseRenderer - Standard parsing (no boilerplate, no existing)', 'isStreaming:', isStreaming)
+        
+        // ENHANCED FALLBACK: If we should use boilerplate but didn't trigger above logic
+        if (useBoilerplate && boilerplateComponents) {
+          console.log('🔄 AIResponseRenderer - Forcing boilerplate for new project')
+          parsed = parser.parseResponse(boilerplateComponents, false)
+          setBoilerplateApplied(true)
+        }
       }
+
+      // Enhanced debugging for parsed results
+      console.log('📊 AIResponseRenderer - Parse Results:', {
+        totalFiles: parsed?.files?.length || 0,
+        totalDirectories: parsed?.directories?.length || 0,
+        uiFiles: parsed?.files?.filter(f => f.path?.includes('src/components/ui/')).length || 0,
+        filePaths: parsed?.files?.map(f => f.path) || [],
+        directoryPaths: parsed?.directories?.map(d => d.path) || [],
+        hasBoilerplateFiles: parsed?.files?.some(f => f.path?.includes('package.json')) || false,
+        responseLength: response?.length || 0,
+        boilerplateLength: boilerplateComponents?.length || 0,
+        useBoilerplate,
+        isStreaming
+      })
       
       // Only trigger WebContainer update if we're in runtime mode and have meaningful changes
       if (viewMode === 'runtime' && parsed.files.length !== lastSyncedFileCount) {

@@ -618,6 +618,178 @@ app.get("/api/boilerplate", async (req, res) => {
   }
 });
 
+// Test path stripping endpoint
+app.get("/api/debug/path-strip-test", async (req, res) => {
+  try {
+    const testPaths = [
+      'todo-dapp/src/app/page.tsx',
+      'my-solana-app/src/components/WalletButton.tsx', 
+      'nft-marketplace/src/lib/utils.ts',
+      'src/app/layout.tsx', // Should not be stripped
+      'public/favicon.ico', // Should not be stripped
+      'package.json', // Should not be stripped
+      'solana-nft-dapp/anchor/programs/nft/lib.rs'
+    ];
+    
+    // Simple path stripping logic (mimics the XML parser)
+    const stripTopLevelFolder = (filePath: string): string => {
+      const cleanPath = filePath.replace(/^\/+/, '');
+      const parts = cleanPath.split('/');
+      
+      if (parts.length > 1 && parts[0]) {
+        const firstPart = parts[0].toLowerCase();
+        const validTopLevelFolders = ['src', 'public', 'pages', 'components', 'lib', 'app', 'styles', 'utils', 'hooks', 'types', 'config', 'anchor', 'tests'];
+        
+        if (!validTopLevelFolders.includes(firstPart) && !firstPart.startsWith('.')) {
+          return parts.slice(1).join('/');
+        }
+      }
+      
+      return cleanPath;
+    };
+    
+    const results = testPaths.map(path => ({
+      original: path,
+      stripped: stripTopLevelFolder(path),
+      wasStripped: path !== stripTopLevelFolder(path)
+    }));
+    
+    res.json({ results });
+  } catch (error) {
+    console.error("Path strip test error:", error);
+    res.status(500).json({ error: "Failed to test path stripping" });
+  }
+});
+
+// Test parsing endpoint - mimics what frontend does
+app.get("/api/debug/parse-test", async (req, res) => {
+  try {
+    // Simulate an empty AI response with boilerplate
+    const emptyResponse = "";
+    const testResponse = "Create a simple hello world component";
+    
+    // Import the parser (simplified version)
+    const parseXML = (content: string) => {
+      const fileMatches = content.match(/<forgeAction[^>]*type=["']file["'][^>]*filePath=["']([^"']+)["'][^>]*>([\s\S]*?)<\/forgeAction>/gi) || [];
+      const dirMatches = content.match(/<forgeAction[^>]*type=["']directory["'][^>]*dirPath=["']([^"']+)["'][^>]*>/gi) || [];
+      
+      const files = fileMatches.map((match, index) => {
+        const pathMatch = match.match(/filePath=["']([^"']+)["']/);
+        const contentMatch = match.match(/<forgeAction[^>]*>([\s\S]*?)<\/forgeAction>/);
+        return {
+          id: `file-${index}`,
+          path: pathMatch ? pathMatch[1] : `unknown-${index}`,
+          content: contentMatch ? contentMatch[1].trim() : '',
+          name: pathMatch ? pathMatch[1].split('/').pop() : `unknown-${index}`,
+          language: 'text'
+        };
+      });
+      
+      const directories = dirMatches.map((match, index) => {
+        const pathMatch = match.match(/dirPath=["']([^"']+)["']/);
+        return {
+          id: `dir-${index}`,
+          path: pathMatch ? pathMatch[1] : `unknown-${index}`,
+          name: pathMatch ? pathMatch[1].split('/').pop() : `unknown-${index}`,
+          isDirectory: true
+        };
+      });
+      
+      return { files, directories };
+    };
+    
+    const boilerplateResult = parseXML(boilerplateComponents);
+    const emptyResult = parseXML(emptyResponse);
+    const testResult = parseXML(testResponse);
+    
+    res.json({
+      boilerplateOnly: {
+        files: boilerplateResult.files.length,
+        directories: boilerplateResult.directories.length,
+        uiFiles: boilerplateResult.files.filter(f => f.path.includes('src/components/ui/')).length,
+        sampleFiles: boilerplateResult.files.slice(0, 3).map(f => ({ path: f.path, name: f.name }))
+      },
+      emptyResponse: {
+        files: emptyResult.files.length,
+        directories: emptyResult.directories.length,
+      },
+      testResponse: {
+        files: testResult.files.length,
+        directories: testResult.directories.length,
+      }
+    });
+  } catch (error) {
+    console.error("Parse test error:", error);
+    res.status(500).json({ error: "Failed to test parsing" });
+  }
+});
+
+// Debug endpoint to test boilerplate parsing
+app.get("/api/debug/boilerplate", async (req, res) => {
+  try {
+    // Count UI components in boilerplate
+    const uiComponentCount = (boilerplateComponents.match(/src\/components\/ui\//g) || []).length;
+    const fileCount = (boilerplateComponents.match(/<forgeAction[^>]*type=["']file["']/g) || []).length;
+    const dirCount = (boilerplateComponents.match(/<forgeAction[^>]*type=["']directory["']/g) || []).length;
+    
+    const uiFiles: string[] = [];
+    const uiMatches = boilerplateComponents.match(/<forgeAction[^>]*type=["']file["'][^>]*filePath=["']src\/components\/ui\/[^"']*["']/g) || [];
+    
+    uiMatches.forEach(match => {
+      const pathMatch = match.match(/filePath=["']([^"']+)["']/);
+      if (pathMatch) {
+        uiFiles.push(pathMatch[1]);
+      }
+    });
+
+    res.json({
+      uiComponentCount,
+      totalFiles: fileCount,
+      totalDirectories: dirCount,
+      uiFiles,
+      boilerplateLength: boilerplateComponents.length,
+      hasUIDirectory: boilerplateComponents.includes('src/components/ui')
+    });
+  } catch (error) {
+    console.error("Debug endpoint error:", error);
+    res.status(500).json({ error: "Failed to debug boilerplate" });
+  }
+});
+
+// Add missing UI components to existing projects
+app.post("/api/admin/add-ui-components", async (req, res) => {
+  try {
+    console.log("🔄 Adding UI components to existing projects...");
+    
+    // Get all projects that might be missing UI components
+    const projects = await prismaClient.project.findMany();
+    let updatedCount = 0;
+
+    for (const project of projects) {
+      console.log(`Processing project: ${project.id}`);
+      
+      // For now, we'll just update the project to trigger the boilerplate merge
+      // This is a simple approach - in a real scenario you'd check if UI components exist
+      await prismaClient.project.update({
+        where: { id: project.id },
+        data: { updatedAt: new Date() }
+      });
+      
+      updatedCount++;
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Processed ${updatedCount} projects`,
+      note: "UI components will be available in new AI responses for these projects"
+    });
+
+  } catch (error) {
+    console.error("❌ Error:", error);
+    res.status(500).json({ error: "Failed to update projects" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
 });
