@@ -6,7 +6,7 @@
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
     "build": "bun run db:generate && bun build index.ts --outdir public --target bun",
-    "start": "bun index.ts",
+    "start": "bun public/index.js",
     "dev": "bun --watch index.ts"
   },
   "dependencies": {
