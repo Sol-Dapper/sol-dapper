@@ -3,19 +3,5 @@
   "name": "sol-dapper-backend",
   "buildCommand": "cp -r ../../packages ./packages && bun install && bun run build",
   "installCommand": "bun install",
-  "framework": null,
-  "functions": {
-    "api/*.ts": {
-      "runtime": "@vercel/node@3"
-    }
-  },
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/index.ts"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  "framework": null
 }
