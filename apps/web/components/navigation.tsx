@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { ChevronDown, LogOut, Wallet, Mail, Shield, Menu, Zap } from "lucide-react"
 import Link from "next/link"
+import { ThemeToggle } from "./theme-toggle"
 
 interface User {
   id: string
@@ -75,7 +76,8 @@ export function Navigation({ user, onLogout }: NavigationProps) {
         </div>
 
         {/* Desktop User Menu */}
-        <div className="hidden md:flex">
+        <div className="hidden md:flex items-center gap-2">
+          <ThemeToggle />
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -148,7 +150,8 @@ export function Navigation({ user, onLogout }: NavigationProps) {
         </div>
 
         {/* Mobile Menu */}
-        <div className="md:hidden">
+        <div className="md:hidden flex items-center gap-2">
+          <ThemeToggle />
           {user && (
             <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
               <SheetTrigger asChild>
@@ -164,6 +167,12 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                   {/* Mobile Navigation Links */}
                   <div className="space-y-2">
                     {/* Demo and Builder routes removed - functionality integrated into main project page */}
+                  </div>
+                  
+                  {/* Theme Toggle */}
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border">
+                    <span className="font-medium">Theme</span>
+                    <ThemeToggle />
                   </div>
                   
                   <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 border">
