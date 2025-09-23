@@ -131,9 +131,7 @@ export function ConversationHistory({
               messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex gap-3 ${
-                    message.type === 'USER' ? 'flex-row-reverse' : 'flex-row'
-                  }`}
+                  className="flex gap-3 flex-row"
                 >
                   {/* Avatar */}
                   <div className={`flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full ${
@@ -149,13 +147,9 @@ export function ConversationHistory({
                   </div>
                   
                   {/* Message Content */}
-                  <div className={`flex-1 space-y-2 ${
-                    message.type === 'USER' ? 'text-right' : 'text-left'
-                  }`}>
+                  <div className="flex-1 space-y-2 text-left">
                     {/* Header */}
-                    <div className={`flex items-center gap-2 ${
-                      message.type === 'USER' ? 'justify-end' : 'justify-start'
-                    }`}>
+                    <div className="flex items-center gap-2 justify-start">
                       <Badge variant={message.type === 'USER' ? 'default' : 'secondary'} className="text-xs">
                         {message.type === 'USER' ? 'You' : 'AI Assistant'}
                       </Badge>
@@ -172,7 +166,7 @@ export function ConversationHistory({
                     </div>
                     
                     {/* Message Bubble */}
-                    <div className={`inline-block max-w-[85%] rounded-lg px-4 py-3 ${
+                    <div className={`block max-w-[85%] rounded-lg px-4 py-3 ${
                       message.type === 'USER'
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted border border-border'

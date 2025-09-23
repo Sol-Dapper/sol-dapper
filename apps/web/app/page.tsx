@@ -9,9 +9,12 @@ import { Label } from "../components/ui/label"
 import { Navigation } from "../components/navigation"
 import { ProjectsSidebar } from "../components/ProjectsSidebar"
 import { LoginForm } from "../components/login-form"
+import { PromptInputBox } from "../components/ui/ai-prompt-box"
+import { ShaderAnimation } from "../components/ui/shader-animation"
 import { type JSX, useEffect, useState, useCallback } from "react"
 import { registerUser, API_BASE_URL } from "../lib/api"
 import { useRouter } from "next/navigation"
+import { useTheme } from "next-themes"
 import { Zap, Send, Loader2, AlertCircle } from "lucide-react"
 
 type ProjectStatus = "creating" | "generating" | "completed" | "error"
@@ -35,6 +38,7 @@ const AVAILABLE_MODELS = [
 
 export default function Home(): JSX.Element {
   const { login, authenticated, user, logout, ready, getAccessToken } = usePrivy()
+  const { setTheme } = useTheme()
   const router = useRouter()
   const [isRegistering, setIsRegistering] = useState(false)
   const [registrationError, setRegistrationError] = useState<string | null>(null)
@@ -103,6 +107,11 @@ export default function Home(): JSX.Element {
       setIsLoadingProjects(false)
     }
   }, [authenticated, getAccessToken])
+
+  // Force dark mode on the home page
+  useEffect(() => {
+    setTheme("dark")
+  }, [setTheme])
 
   useEffect(() => {
     if (ready && authenticated && user?.id) {
@@ -233,99 +242,84 @@ export default function Home(): JSX.Element {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Navigation user={user} onLogout={logout} />
+    <div className="min-h-screen relative flex flex-col">
+      {/* Shader Animation Background */}
+      <div className="fixed inset-0 z-0">
+        <ShaderAnimation />
+      </div>
       
-      <ProjectsSidebar 
-        projects={projects}
-        isLoadingProjects={isLoadingProjects}
-        onLoadProjects={loadProjects}
-        topOffset={64}
-      />
-      
-      <main className="flex-1 flex items-center justify-center p-12">
-        <div className="w-full max-w-2xl mx-auto">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-primary/10 border border-primary/20 mb-6">
-              <Zap className="h-8 w-8 text-primary" />
+      {/* Main Content */}
+      <div className="relative z-10 min-h-screen flex flex-col">
+        <Navigation user={user} onLogout={logout} />
+        
+        <ProjectsSidebar 
+          projects={projects}
+          isLoadingProjects={isLoadingProjects}
+          onLoadProjects={loadProjects}
+          topOffset={64}
+        />
+        
+        <main className="flex-1 flex flex-col items-center justify-center p-12">
+          <div className="w-full max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-primary/10 border border-primary/20 mb-6 backdrop-blur-sm">
+                <Zap className="h-8 w-8 text-primary" />
+              </div>
+              <h1 className="text-3xl font-bold text-foreground mb-4 drop-shadow-sm">Create Your Solana App</h1>
+              <p className="text-lg text-muted-foreground leading-relaxed drop-shadow-sm">
+                Describe your application idea and let AI generate a complete Solana project for you
+              </p>
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-4">Create Your Solana App</h1>
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              Describe your application idea and let AI generate a complete Solana project for you
-            </p>
-          </div>
 
-          <Card className="p-8 border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
             <div className="space-y-6">
-              <div className="space-y-3">
-                <Label htmlFor="prompt" className="text-base font-medium">
-                  Project Description
-                </Label>
-                <Textarea
-                  id="prompt"
-                  placeholder="Describe the Solana application you want to create. Be specific about features, functionality, and any technical requirements..."
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-[160px] resize-none border-border/50 focus:border-primary/50 text-base leading-relaxed"
-                  disabled={isCreating}
-                />
-                <p className="text-sm text-muted-foreground">
-                  {prompt.length}/2000 characters
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <Label htmlFor="model" className="text-base font-medium">
-                  AI Model
-                </Label>
-                <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isCreating}>
-                  <SelectTrigger className="w-full border-border/50 h-12">
-                    <SelectValue>
-                      <span className="font-medium">{AVAILABLE_MODELS.find((m) => m.value === selectedModel)?.label}</span>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AVAILABLE_MODELS.map((model) => (
-                      <SelectItem key={model.value} value={model.value} className="py-3">
-                        <span className="font-medium">{model.label}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
+              {/* Error Display */}
               {error && (
-                <div className="flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/10 p-4">
-                  <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
-                  <div className="space-y-1">
-                    <p className="font-medium text-destructive">Error</p>
-                    <p className="text-sm text-destructive/80 leading-relaxed">{error}</p>
+                <div className="flex justify-center">
+                  <div className="flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/10 backdrop-blur-sm p-4 max-w-2xl">
+                    <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                    <div className="space-y-1">
+                      <p className="font-medium text-destructive">Error</p>
+                      <p className="text-sm text-destructive/80 leading-relaxed">{error}</p>
+                    </div>
                   </div>
                 </div>
               )}
 
-              <Button 
-                onClick={handleCreateProject} 
-                disabled={!prompt.trim() || isCreating || prompt.length > 2000} 
-                className="w-full h-14 text-lg font-medium"
-                size="lg"
-              >
-                {isCreating ? (
-                  <>
-                    <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                    Creating Project...
-                  </>
-                ) : (
-                  <>
-                    <Send className="mr-3 h-6 w-6" />
-                    Create & Generate
-                  </>
-                )}
-              </Button>
+              {/* AI Prompt Box */}
+              <div className="w-full max-w-2xl mx-auto">
+                <PromptInputBox
+                  value={prompt}
+                  onValueChange={setPrompt}
+                  onSend={(message) => {
+                    if (message.trim() && message.length <= 2000) {
+                      handleCreateProject();
+                    }
+                  }}
+                  isLoading={isCreating}
+                  placeholder="Describe the Solana application you want to create. Be specific about features, functionality, and any technical requirements..."
+                  className="w-full backdrop-blur-sm"
+                  aiModels={AVAILABLE_MODELS}
+                  selectedModel={selectedModel}
+                  onModelChange={setSelectedModel}
+                />
+                
+                {/* Character count */}
+                <div className="flex justify-between items-center mt-2 px-4">
+                  <p className="text-sm text-muted-foreground drop-shadow-sm">
+                    {prompt.length}/2000 characters
+                  </p>
+                  {isCreating && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground drop-shadow-sm">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating Project...
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          </Card>
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

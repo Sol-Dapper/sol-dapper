@@ -57,22 +57,22 @@ export function ChatInterface({
 
   // Convert prompts to conversation messages
   const messages: ConversationMessage[] = []
-  
+
   // Sort prompts by creation time to get proper chronological order
-  const sortedPrompts = [...prompts].sort((a, b) => 
+  const sortedPrompts = [...prompts].sort((a, b) =>
     new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   )
-  
+
   // Convert each prompt to a message
   sortedPrompts.forEach((prompt) => {
     let content = prompt.content
-    
+
     // If this is a SYSTEM prompt (AI response), extract plain text from XML
     if (prompt.type === 'SYSTEM') {
       const parsed = parser.parseResponse(prompt.content, false)
       content = parsed.text || prompt.content
     }
-    
+
     messages.push({
       id: prompt.id,
       content: content,
@@ -80,7 +80,7 @@ export function ChatInterface({
       timestamp: prompt.createdAt
     })
   })
-  
+
   // Add current conversation if active
   if (currentUserQuery) {
     messages.push({
@@ -90,7 +90,7 @@ export function ChatInterface({
       timestamp: new Date().toISOString()
     })
   }
-  
+
   if (currentAIResponse) {
     messages.push({
       id: 'current-ai',
@@ -104,13 +104,13 @@ export function ChatInterface({
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     const scrollToBottom = () => {
-      messagesEndRef.current?.scrollIntoView({ 
+      messagesEndRef.current?.scrollIntoView({
         behavior: 'smooth',
         block: 'end',
         inline: 'nearest'
       })
     }
-    
+
     // Small delay to ensure DOM is updated
     const timeoutId = setTimeout(scrollToBottom, 50)
     return () => clearTimeout(timeoutId)
@@ -119,7 +119,7 @@ export function ChatInterface({
   // Also scroll to bottom on initial load if there are messages
   useEffect(() => {
     if (messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ 
+      messagesEndRef.current?.scrollIntoView({
         behavior: 'auto',
         block: 'end',
         inline: 'nearest'
@@ -134,7 +134,7 @@ export function ChatInterface({
     const diffMins = Math.floor(diffMs / (1000 * 60))
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-    
+
     if (diffMins < 1) return 'Just now'
     if (diffMins < 60) return `${diffMins}m ago`
     if (diffHours < 24) return `${diffHours}h ago`
@@ -154,7 +154,7 @@ export function ChatInterface({
     }
   }
 
-    return (
+  return (
     <Card className="border border-border/50 shadow-lg gap-0 bg-card/50 backdrop-blur-sm flex flex-col h-full">
       <CardHeader className="pb-3 flex-shrink-0">
         <CardTitle className="text-lg mb-1 flex items-center gap-2">
@@ -165,7 +165,7 @@ export function ChatInterface({
           {messages.length === 0 ? 'Start a conversation to build your project' : `${messages.length} messages`}
         </p>
       </CardHeader>
-      
+
       {/* Messages Area */}
       <CardContent className="flex-1 min-h-0 p-0 flex flex-col">
         <ScrollArea className="flex-1 px-3 h-full">
@@ -188,49 +188,46 @@ export function ChatInterface({
               messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`py-1.5 flex gap-2 ${
-                    message.type === 'USER' ? 'flex-row-reverse' : 'flex-row'
-                  }`}
+                  className={`py-1.5 flex gap-2 ${message.type === 'USER' ? 'flex-row-reverse' : 'flex-row'
+                    }`}
                 >
                   {/* Avatar */}
-                  <div className={`flex-shrink-0 flex h-6 w-6 items-center justify-center rounded-full ${
-                    message.type === 'USER' 
-                      ? 'bg-primary text-primary-foreground' 
+                  <div className={`flex-shrink-0 flex h-6 w-6 items-center justify-center rounded-full ${message.type === 'USER'
+                      ? 'bg-primary text-primary-foreground'
                       : 'border border-border'
-                  }`}>
+                    }`}>
                     {message.type === 'USER' ? (
                       <User className="h-3 w-3" />
                     ) : (
                       <Bot className="h-3 w-3" />
                     )}
                   </div>
-                  
+
                   {/* Message Content */}
-                  <div className={`flex-1 space-y-1 max-w-[85%] ${
-                    message.type === 'USER' ? 'text-right' : 'text-left'
-                  }`}>
-                    {/* Header */}
-                    <div className={`flex items-center gap-2 ${
-                      message.type === 'USER' ? 'justify-end' : 'justify-start'
+                  <div className={`flex-1 space-y-1 max-w-[85%] ${message.type === 'USER' ? 'text-right' : 'text-left'
                     }`}>
+                    {/* Header */}
+                    <div className={`flex items-center gap-2 ${message.type === 'USER' ? 'justify-end' : 'justify-start'
+                      }`}>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-2 w-2" />
                         {formatTimestamp(message.timestamp)}
                       </div>
                     </div>
-                    
+
                     {/* Message Bubble */}
-                    <div className={`inline-block rounded-lg px-3 py-2 ${
-                      message.type === 'USER'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'border border-border'
-                    }`}>
+                    <div
+                      className={`inline-block rounded-lg px-3 py-2 ${message.type === 'USER'
+                          ? 'bg-primary text-primary-foreground text-left'
+                          : 'border border-border text-left'
+                        }`}
+                    >
                       {message.type === 'USER' ? (
-                        <div className="text-xs leading-relaxed whitespace-pre-wrap break-words">
+                        <div className="text-xs leading-relaxed whitespace-pre-wrap break-words text-left">
                           {message.content || 'No content'}
                         </div>
                       ) : (
-                        <div className="break-words">
+                        <div className="break-words text-left">
                           {message.content ? (
                             <MarkdownRenderer content={message.content} />
                           ) : message.isStreaming ? (
@@ -241,6 +238,7 @@ export function ChatInterface({
                         </div>
                       )}
                     </div>
+
                   </div>
                 </div>
               ))
@@ -249,7 +247,7 @@ export function ChatInterface({
           </div>
         </ScrollArea>
       </CardContent>
-      
+
       {/* Input Area - At Bottom of Card */}
       <div className="border-t border-border/50 p-2 max-h-[90px] space-y-2 flex-shrink-0">
         {/* Model Selection */}
@@ -268,7 +266,7 @@ export function ChatInterface({
             </SelectContent>
           </Select>
         </div>
-        
+
         {/* Message Input */}
         <div className="flex gap-2 items-end ">
           <div className="flex-1">
