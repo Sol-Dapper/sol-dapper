@@ -221,14 +221,14 @@ export function CodeEditor({
             </div>
             {showActions && (
               <div className="flex items-center gap-2">
-                <Button
+                {/* <Button
                   variant="ghost"
                   size="sm"
                   onClick={copyToClipboard}
                   className="h-8 w-8 p-0"
                 >
                   <Copy className="h-4 w-4" />
-                </Button>
+                </Button> */}
                 <Button
                   variant="ghost"
                   size="sm"

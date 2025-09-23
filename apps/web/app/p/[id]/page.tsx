@@ -10,7 +10,7 @@ import { Navigation } from "../../../components/navigation"
 import { ProjectsSidebar } from "../../../components/ProjectsSidebar"
 import { AIResponseRenderer } from "../../../components/AIResponseRenderer"
 import { ChatInterface } from "../../../components/ChatInterface"
-import { Loader2, AlertCircle, Calendar, Play, Square, Terminal, RefreshCw } from "lucide-react"
+import { Loader2, AlertCircle, Play, Square } from "lucide-react"
 import Link from "next/link"
 import { API_BASE_URL } from "../../../lib/api"
 import { WebContainer, type WebContainerProcess } from "@webcontainer/api"
@@ -93,6 +93,9 @@ export default function ProjectPage(): JSX.Element {
   const [steps, setSteps] = useState<ExecutionStep[]>([])
   const [view, setView] = useState<'code' | 'preview'>('code')
   const [parsedFiles, setParsedFiles] = useState<ParsedFile[]>([])
+  const [isTerminalMinimized, setIsTerminalMinimized] = useState<boolean>(false)
+  const [terminalHeight, setTerminalHeight] = useState<number>(200)
+  const [fileTreeWidth, setFileTreeWidth] = useState<number>(220)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const terminalRef = useRef<HTMLPreElement>(null)
   
@@ -504,89 +507,7 @@ export default function ProjectPage(): JSX.Element {
     }
   }
 
-  const startDevServer = async () => {
-    if (!webcontainer || !containerReady || isRunning) return
 
-    try {
-      setIsRunning(true)
-      setTerminalOutput(prev => prev + '\n--- Starting Development Server ---\n')
-      
-      // Check if dependencies are already installed
-      const installStep = steps.find(step => step.id === 'install')
-      const dependenciesInstalled = installStep?.status === 'success'
-      
-      if (!dependenciesInstalled) {
-        // First install dependencies
-        await installDependencies()
-      } else {
-        setTerminalOutput(prev => prev + '\n📦 Dependencies already installed, starting dev server...\n')
-      }
-
-      setTerminalOutput(prev => prev + '\n--- Launching dev server ---\n')
-
-      // Start the dev server
-      const devProcess = await webcontainer.spawn('npm', ['run', 'dev'])
-      setCurrentProcess(devProcess)
-      
-      let serverStarted = false
-      
-      // Set up output streaming and detect server ready
-      devProcess.output.pipeTo(new WritableStream({
-        write(data) {
-          setTerminalOutput(prev => prev + data)
-          console.log('Dev server output:', data)
-          
-          // More comprehensive server ready detection
-          const readyIndicators = [
-            'Local:',
-            'localhost:',
-            'ready -',
-            'ready on',
-            'started server on',
-            'server started on',
-            'running at',
-            'listening on',
-            'available on',
-            'http://localhost',
-            '➜  Local:'
-          ]
-          
-          const isReady = readyIndicators.some(indicator => 
-            data.toLowerCase().includes(indicator.toLowerCase())
-          )
-          
-          if (isReady && !serverStarted) {
-            serverStarted = true
-            setTerminalOutput(prev => prev + '\n🚀 Development server is ready!\n')
-            console.log('Development server detected as ready')
-          }
-        }
-      })).catch(console.error)
-
-      // Monitor the process
-      devProcess.exit.then(exitCode => {
-        console.log('Dev server process exited with code:', exitCode)
-        setIsRunning(false)
-        setCurrentProcess(null)
-        if (exitCode !== 0) {
-          setTerminalOutput(prev => prev + `\n❌ Dev server exited with code ${exitCode}\n`)
-        }
-      }).catch(err => {
-        console.error('Dev server process error:', err)
-        setIsRunning(false)
-        setCurrentProcess(null)
-        setTerminalOutput(prev => prev + `\n❌ Dev server error: ${err}\n`)
-      })
-
-      console.log('Development server process started')
-      setTerminalOutput(prev => prev + 'Development server starting...\n')
-      
-    } catch (err) {
-      console.error('Failed to start dev server:', err)
-      setTerminalOutput(prev => prev + `\n❌ Failed to start dev server: ${err}\n`)
-      setIsRunning(false)
-    }
-  }
 
   const stopDevServer = async () => {
     try {
@@ -919,7 +840,7 @@ export default function ProjectPage(): JSX.Element {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       <Navigation user={user} onLogout={logout} />
       
       <ProjectsSidebar 
@@ -928,15 +849,13 @@ export default function ProjectPage(): JSX.Element {
         onLoadProjects={loadProjects}
         topOffset={64}
       />
-      
-
 
       {/* Main Content */}
-      <main className="flex-1 bg-background">
-        <div className="mx-auto h-full w-full px-12 py-8">
-          <div className="grid h-full grid-cols-1 gap-6 xl:grid-cols-[30%_70%]">
+      <main className="flex-1 bg-background min-h-0">
+        <div className="mx-auto h-full w-full px-6 py-4">
+          <div className="grid h-full grid-cols-1 gap-4 xl:grid-cols-[30%_70%]">
             {/* Left Column: Chat Interface */}
-            <div className="flex min-h-0 flex-col space-y-6">
+            <div className="flex min-h-0 flex-col space-y-4">
               {/* Chat Interface */}
               <ChatInterface
                 prompts={project?.prompts || []}
@@ -956,11 +875,11 @@ export default function ProjectPage(): JSX.Element {
             </div>
 
             {/* Right Column: Code Editor or Preview */}
-            <div className="flex min-h-0 flex-col">
-              <Card className="min-h-0 h-full border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <div>
+            <div className="flex min-h-0 flex-col h-full">
+              <Card className="min-h-0 h-full border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm flex flex-col">
+                <CardHeader className="pb-4 flex-shrink-0">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
                       <CardTitle className="text-xl mb-1">
                         {view === 'code' ? 'Project Files & Code Editor' : 'Live Preview'}
                       </CardTitle>
@@ -968,7 +887,7 @@ export default function ProjectPage(): JSX.Element {
                         {view === 'code' ? 'Browse and edit project files' : 'See your project running live'}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-shrink-0">
                       <Button
                         onClick={() => setView('code')}
                         variant={view === 'code' ? 'default' : 'outline'}
@@ -991,7 +910,10 @@ export default function ProjectPage(): JSX.Element {
                       {/* Runtime Controls */}
                       <Button
                         onClick={async () => {
-                          if (!webcontainer || !containerReady) return
+                          if (!webcontainer || !containerReady) {
+                            setTerminalOutput('❌ WebContainer not ready. Please wait for initialization...\n')
+                            return
+                          }
                           
                           try {
                             // Kill any running processes first
@@ -999,6 +921,11 @@ export default function ProjectPage(): JSX.Element {
                               currentProcess.kill()
                               setCurrentProcess(null)
                               setTerminalOutput(prev => prev + '\n🛑 Stopped previous process\n')
+                            }
+                            
+                            // Initialize terminal output if empty
+                            if (!terminalOutput) {
+                              setTerminalOutput('🚀 Starting development environment...\n')
                             }
                             
                             setTerminalOutput(prev => prev + '\n--- Installing dependencies with pnpm ---\n')
@@ -1128,20 +1055,15 @@ export default function ProjectPage(): JSX.Element {
                         </Badge>
                       )}
                     </div>
-                    {isGenerating && (
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                        <span className="text-sm text-muted-foreground">Generating...</span>
-                      </div>
-                    )}
                   </div>
                 </CardHeader>
                 <Separator />
-                <CardContent className="min-h-0 h-full p-0">
-                  <div className="h-full">
+                <CardContent className="flex-1 min-h-0 p-0 flex flex-col">
+                  {/* Main Content Area */}
+                  <div className="flex-1 min-h-0">
                     {view === 'code' ? (
                       (projectFiles || streamingResponse) ? (
-                        <div className="h-full p-4">
+                        <div className="h-full p-4 overflow-hidden">
                           <AIResponseRenderer 
                             response={isGenerating && streamingResponse ? streamingResponse : projectFiles} 
                             existingFiles={existingFiles}
@@ -1154,6 +1076,8 @@ export default function ProjectPage(): JSX.Element {
                               setParsedFiles(files)
                             }}
                             terminalOutput={terminalOutput}
+                            fileTreeWidth={fileTreeWidth}
+                            onFileTreeWidthChange={setFileTreeWidth}
                           />
                         </div>
                       ) : (
@@ -1187,6 +1111,98 @@ export default function ProjectPage(): JSX.Element {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Terminal Minimized Indicator */}
+                  {terminalOutput && !terminalOutput.trim() && (
+                    <div className="border-t border-border/50 bg-muted/30 h-8 flex items-center justify-between px-4 flex-shrink-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Terminal (hidden)</span>
+                      </div>
+                      <Button
+                        onClick={() => setTerminalOutput('🚀 Terminal ready...\n')}
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                        title="Show Terminal"
+                      >
+                        □
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Terminal Section */}
+                  {terminalOutput && terminalOutput.trim() && (
+                    <div className="border-t border-border/50 bg-black/95 text-green-400 flex-shrink-0">
+                      {/* Terminal Resize Handle */}
+                      <div 
+                        className="h-1 bg-border/30 hover:bg-border cursor-row-resize flex items-center justify-center group"
+                        onMouseDown={(e) => {
+                          const startY = e.clientY
+                          const startHeight = terminalHeight
+                          
+                          const handleMouseMove = (e: MouseEvent) => {
+                            const deltaY = startY - e.clientY
+                            const newHeight = Math.min(Math.max(startHeight + deltaY, 100), 500)
+                            setTerminalHeight(newHeight)
+                          }
+                          
+                          const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove)
+                            document.removeEventListener('mouseup', handleMouseUp)
+                          }
+                          
+                          document.addEventListener('mousemove', handleMouseMove)
+                          document.addEventListener('mouseup', handleMouseUp)
+                        }}
+                      >
+                        <div className="w-8 h-0.5 bg-border/50 rounded group-hover:bg-border transition-colors"></div>
+                      </div>
+                      
+                      <div 
+                        className="h-full flex flex-col" 
+                        style={{ height: isTerminalMinimized ? '32px' : `${terminalHeight}px` }}
+                      >
+                        <div className="flex items-center justify-between px-4 py-2 bg-black/50 border-b border-border/30">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span className="text-xs text-muted-foreground ml-2">Terminal</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              onClick={() => setIsTerminalMinimized(!isTerminalMinimized)}
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                              title={isTerminalMinimized ? "Maximize Terminal" : "Minimize Terminal"}
+                            >
+                              {isTerminalMinimized ? '□' : '_'}
+                            </Button>
+                            <Button
+                              onClick={() => setTerminalOutput('')}
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                              title="Close Terminal"
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        </div>
+                        {!isTerminalMinimized && (
+                          <div className="flex-1 overflow-auto">
+                            <pre 
+                              ref={terminalRef}
+                              className="text-xs font-mono p-4 whitespace-pre-wrap break-words h-full overflow-auto"
+                            >
+                              {terminalOutput}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

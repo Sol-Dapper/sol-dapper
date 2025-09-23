@@ -14,7 +14,6 @@ import {
   Zap,
   Terminal,
   Download,
-  Code,
   Play
 } from 'lucide-react'
 import { Tree, type TreeViewElement } from '@/components/ui/file-tree'
@@ -32,9 +31,11 @@ interface AIResponseRendererProps {
   disableRuntime?: boolean // Flag to disable runtime/WebContainer integration
   onParsedFiles?: (files: ParsedFile[]) => void // Callback to get parsed files for external mounting
   terminalOutput?: string // Terminal output from project runtime
+  fileTreeWidth?: number // Width of the file tree panel
+  onFileTreeWidthChange?: (width: number) => void // Callback for file tree width changes
 }
 
-export function AIResponseRenderer({ response, existingFiles = "", useBoilerplate = true, isStreaming = false, hasExistingProject = false, disableRuntime = false, onParsedFiles, terminalOutput }: AIResponseRendererProps) {
+export function AIResponseRenderer({ response, existingFiles = "", useBoilerplate = true, isStreaming = false, hasExistingProject = false, disableRuntime = false, onParsedFiles, terminalOutput, fileTreeWidth = 220, onFileTreeWidthChange }: AIResponseRendererProps) {
   const [selectedFileId, setSelectedFileId] = useState<string>('')
   const [selectedFile, setSelectedFile] = useState<ParsedFile | null>(null)
   const [parsedResponse, setParsedResponse] = useState<ParsedResponse | null>(null)
@@ -508,20 +509,7 @@ Generated on: ${new Date().toISOString()}
 
   return (
     <div className="space-y-6">
-      {/* Boilerplate Indicator */}
-      {hasBoilerplateFiles && useBoilerplate && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
-              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">Boilerplate Components Applied</h3>
-              <p className="text-sm text-muted-foreground">Essential Solana DApp components have been added to your project</p>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* File Tree and Code Editor - Prioritized at Top */}
       {hasFiles && (
@@ -553,15 +541,6 @@ Generated on: ${new Date().toISOString()}
             <div className="ml-auto flex items-center gap-2">
               {/* View Mode Toggle */}
                             <div className="flex rounded-lg border border-border/50 p-1">
-                <Button
-                  variant={viewMode === 'code' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('code')}
-                  className="flex items-center gap-2 h-8"
-                >
-                  <Code className="h-4 w-4" />
-                  Code
-                </Button>
                 {!disableRuntime && (
                   <Button
                     variant={viewMode === 'runtime' ? 'default' : 'ghost'}
@@ -596,14 +575,14 @@ Generated on: ${new Date().toISOString()}
           </div>
           
           {viewMode === 'code' || disableRuntime ? (
-            <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
+            <div className="flex gap-4">
               {/* File Tree */}
-              <Card>
+              <Card style={{width: `${fileTreeWidth}px`}} className="flex-shrink-0">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">File Explorer</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <ScrollArea className="h-[600px]">
+                  <ScrollArea className={`h-[calc(100vh-${500 + (terminalOutput ? 200 : 0)}px)]`}>
                     <div className="p-4">
                       <Tree
                         data={treeData}
@@ -616,8 +595,35 @@ Generated on: ${new Date().toISOString()}
                 </CardContent>
               </Card>
 
+              {/* Resize Handle */}
+              {onFileTreeWidthChange && (
+                <div 
+                  className="w-1 bg-border/30 hover:bg-border cursor-col-resize flex items-center justify-center group"
+                  onMouseDown={(e) => {
+                    const startX = e.clientX
+                    const startWidth = fileTreeWidth
+                    
+                    const handleMouseMove = (e: MouseEvent) => {
+                      const deltaX = e.clientX - startX
+                      const newWidth = Math.min(Math.max(startWidth + deltaX, 150), 400)
+                      onFileTreeWidthChange(newWidth)
+                    }
+                    
+                    const handleMouseUp = () => {
+                      document.removeEventListener('mousemove', handleMouseMove)
+                      document.removeEventListener('mouseup', handleMouseUp)
+                    }
+                    
+                    document.addEventListener('mousemove', handleMouseMove)
+                    document.addEventListener('mouseup', handleMouseUp)
+                  }}
+                >
+                  <div className="w-0.5 h-8 bg-border/50 rounded group-hover:bg-border transition-colors"></div>
+                </div>
+              )}
+
               {/* Code Editor */}
-              <div>
+              <div className="flex-1 min-w-0">
                 {selectedFile ? (
                   <div className="relative">
                     {isStreaming && selectedFile && !isBoilerplateFile(selectedFile.path) && (
@@ -634,14 +640,14 @@ Generated on: ${new Date().toISOString()}
                       code={streamingFileContent || selectedFile.content}
                       language={selectedFile.language}
                       filename={selectedFile.name}
-                      height={600}
-                      readonly={false} // Make it editable
+                      height={`calc(100vh - ${500 + (terminalOutput ? 200 : 0)}px)`}
+                      readonly={true} // Make it readonly
                       isStreaming={isStreaming && !isBoilerplateFile(selectedFile.path)}
                       streamingSpeed={10} // Characters per interval
                     />
                   </div>
                 ) : (
-                  <Card className="h-[600px] flex items-center justify-center">
+                  <Card className={`h-[calc(100vh-${600 + (terminalOutput ? 200 : 0)}px)] flex items-center justify-center`}>
                     <CardContent className="text-center">
                       <FolderTree className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <p className="text-muted-foreground">
