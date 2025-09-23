@@ -852,8 +852,8 @@ export default function ProjectPage(): JSX.Element {
 
       {/* Main Content */}
       <main className="flex-1 bg-background min-h-0">
-        <div className="mx-auto h-full w-full px-6 py-4">
-          <div className="grid h-full grid-cols-1 gap-4 xl:grid-cols-[30%_70%]">
+        <div className="mx-auto h-full w-full px-1 py-1">
+          <div className="grid h-full grid-cols-1 gap-2 xl:grid-cols-[30%_70%]">
             {/* Left Column: Chat Interface */}
             <div className="flex min-h-0 flex-col  space-y-4">
               {/* Chat Interface */}

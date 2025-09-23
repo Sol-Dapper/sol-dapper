@@ -640,7 +640,7 @@ Generated on: ${new Date().toISOString()}
                       code={streamingFileContent || selectedFile.content}
                       language={selectedFile.language}
                       filename={selectedFile.name}
-                      height={`calc(100vh - ${500 + (terminalOutput ? 200 : 0)}px)`}
+                      height={500}
                       readonly={true} // Make it readonly
                       isStreaming={isStreaming && !isBoilerplateFile(selectedFile.path)}
                       streamingSpeed={10} // Characters per interval

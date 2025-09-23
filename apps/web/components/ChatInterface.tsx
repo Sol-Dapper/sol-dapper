@@ -173,7 +173,7 @@ export function ChatInterface({
             {messages.length === 0 ? (
               <div className="flex h-[200px] items-center justify-center">
                 <div className="text-center space-y-2">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted/30 border border-border/30 mx-auto">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/30 mx-auto">
                     <Bot className="h-6 w-6 text-muted-foreground" />
                   </div>
                   <div className="space-y-1">
@@ -188,7 +188,7 @@ export function ChatInterface({
               messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex gap-2 ${
+                  className={`py-1.5 flex gap-2 ${
                     message.type === 'USER' ? 'flex-row-reverse' : 'flex-row'
                   }`}
                 >
@@ -196,7 +196,7 @@ export function ChatInterface({
                   <div className={`flex-shrink-0 flex h-6 w-6 items-center justify-center rounded-full ${
                     message.type === 'USER' 
                       ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted border border-border'
+                      : 'border border-border'
                   }`}>
                     {message.type === 'USER' ? (
                       <User className="h-3 w-3" />
@@ -213,26 +213,17 @@ export function ChatInterface({
                     <div className={`flex items-center gap-2 ${
                       message.type === 'USER' ? 'justify-end' : 'justify-start'
                     }`}>
-                      <Badge variant={message.type === 'USER' ? 'default' : 'secondary'} className="text-xs px-2 py-0">
-                        {message.type === 'USER' ? 'You' : 'AI'}
-                      </Badge>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-2 w-2" />
                         {formatTimestamp(message.timestamp)}
                       </div>
-                      {message.isStreaming && (
-                        <div className="flex items-center gap-1">
-                          <div className="h-1.5 w-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-                          <span className="text-xs text-blue-600 dark:text-blue-400">writing...</span>
-                        </div>
-                      )}
                     </div>
                     
                     {/* Message Bubble */}
                     <div className={`inline-block rounded-lg px-3 py-2 ${
                       message.type === 'USER'
                         ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted border border-border'
+                        : 'border border-border'
                     }`}>
                       {message.type === 'USER' ? (
                         <div className="text-xs leading-relaxed whitespace-pre-wrap break-words">
@@ -260,9 +251,9 @@ export function ChatInterface({
       </CardContent>
       
       {/* Input Area - At Bottom of Card */}
-      <div className="border-t border-border/50 p-3 space-y-3 flex-shrink-0">
+      <div className="border-t border-border/50 p-2 max-h-[90px] space-y-2 flex-shrink-0">
         {/* Model Selection */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ">
           <span className="text-xs font-medium text-muted-foreground">Model:</span>
           <Select value={selectedModel} onValueChange={onModelChange} disabled={isGenerating}>
             <SelectTrigger className="w-auto min-w-[120px] h-7 text-xs">
@@ -279,22 +270,22 @@ export function ChatInterface({
         </div>
         
         {/* Message Input */}
-        <div className="flex gap-2 items-end">
+        <div className="flex gap-2 items-end ">
           <div className="flex-1">
             <Textarea
               ref={textareaRef}
-              placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
+              placeholder="Type your message..."
               value={newPrompt}
               onChange={(e) => onPromptChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="min-h-[50px] max-h-[100px] resize-none text-xs leading-relaxed"
+              className="min-h-[30px] max-h-[50px] resize-none text-xs leading-relaxed"
               disabled={isGenerating}
             />
           </div>
           <Button
             onClick={handleSubmit}
             disabled={!newPrompt.trim() || isGenerating}
-            className="h-[50px] px-3"
+            className="min-h-[40px] px-3"
             size="sm"
           >
             {isGenerating ? (
@@ -304,13 +295,6 @@ export function ChatInterface({
             )}
           </Button>
         </div>
-        
-        {isGenerating && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <div className="h-1.5 w-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-            AI is generating your response...
-          </div>
-        )}
       </div>
     </Card>
   )
