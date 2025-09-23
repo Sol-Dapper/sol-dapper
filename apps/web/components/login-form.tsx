@@ -20,7 +20,7 @@ export function LoginForm({
 }: LoginFormProps) {
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="border border-border/60 shadow-lg bg-card/70 backdrop-blur-sm">
+      <Card className="border border-border/60 shadow-lg bg-card/80 backdrop-blur-md">
         <CardHeader className="text-center space-y-4">
           <div
             className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-muted/30 border border-border/60 shadow-sm mx-auto"
@@ -29,8 +29,8 @@ export function LoginForm({
             <Zap className="h-10 w-10 text-primary" />
           </div>
           <div className="space-y-2">
-            <CardTitle className="text-3xl font-bold tracking-tight">Welcome to Sol-Dapper</CardTitle>
-            <CardDescription className="text-base">
+            <CardTitle className="text-3xl font-bold tracking-tight drop-shadow-sm">Welcome to Sol-Dapper</CardTitle>
+            <CardDescription className="text-base drop-shadow-sm">
               Build powerful Solana applications with AI assistance in minutes
             </CardDescription>
           </div>
@@ -47,12 +47,12 @@ export function LoginForm({
               Sign in with Privy
             </Button>
           </div>
-          <div className="text-center text-sm text-muted-foreground">
+          <div className="text-center text-sm text-muted-foreground drop-shadow-sm">
             Connect your wallet or sign in with email to begin creating innovative Solana applications
           </div>
         </CardContent>
       </Card>
-      <div className="text-center text-xs text-balance text-muted-foreground">
+      <div className="text-center text-xs text-balance text-muted-foreground drop-shadow-sm">
         By clicking continue, you agree to our <a href="#" className="underline underline-offset-4 hover:text-primary">Terms of Service</a>{" "}
         and <a href="#" className="underline underline-offset-4 hover:text-primary">Privacy Policy</a>.
       </div>

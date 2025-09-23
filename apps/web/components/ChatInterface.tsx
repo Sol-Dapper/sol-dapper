@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { User, Bot, Clock, Send, Loader2 } from 'lucide-react'
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
 import { AIResponseParser } from '@/lib/xml-parser'
+import { InlineLoader } from '@/components/ui/loading-spinner'
 
 interface Prompt {
   id: string
@@ -287,7 +288,7 @@ export function ChatInterface({
             size="sm"
           >
             {isGenerating ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <InlineLoader size="sm" />
             ) : (
               <Send className="h-3 w-3" />
             )}

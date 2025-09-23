@@ -11,6 +11,7 @@ import { ProjectsSidebar } from "../components/ProjectsSidebar"
 import { LoginForm } from "../components/login-form"
 import { PromptInputBox } from "../components/ui/ai-prompt-box"
 import { ShaderAnimation } from "../components/ui/shader-animation"
+import { PageLoader, InlineLoader, LoadingSpinner } from "../components/ui/loading-spinner"
 import { type JSX, useEffect, useState, useCallback } from "react"
 import { registerUser, API_BASE_URL } from "../lib/api"
 import { useRouter } from "next/navigation"
@@ -108,7 +109,7 @@ export default function Home(): JSX.Element {
     }
   }, [authenticated, getAccessToken])
 
-  // Force dark mode on the home page
+  // Force dark mode on the home page and login page
   useEffect(() => {
     setTheme("dark")
   }, [setTheme])
@@ -166,44 +167,28 @@ export default function Home(): JSX.Element {
   }
 
   if (!ready) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-8">
-        <div className="w-full max-w-lg mx-auto text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-primary/5 border border-primary/10 mb-8">
-            <Zap className="h-10 w-10 text-primary" />
-          </div>
-          <h1 className="text-3xl font-bold text-foreground mb-3">Loading Sol-Dapper</h1>
-          <p className="text-muted-foreground mb-12 text-lg leading-relaxed">
-            Initializing your workspace...
-          </p>
-          
-          <Card className="p-10 border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
-            <div className="flex flex-col items-center gap-6">
-              <div className="relative">
-                <div className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-              </div>
-              <div className="space-y-3 text-center">
-                <p className="font-medium text-foreground text-lg">Loading...</p>
-                <p className="text-muted-foreground">Please wait</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </div>
-    )
+    return <PageLoader text="Initializing your workspace..." />
   }
 
   if (!authenticated || !user) {
     return (
-      <main
-        role="main"
-        aria-label="Sol-Dapper authentication"
-        className="min-h-screen bg-background flex items-center justify-center p-6"
-      >
-        <div className="w-full max-w-md mx-auto">
-          <LoginForm onLogin={login} />
+      <div className="min-h-screen relative flex flex-col">
+        {/* Shader Animation Background */}
+        <div className="fixed inset-0 z-0">
+          <ShaderAnimation />
         </div>
-      </main>
+        
+        {/* Main Content */}
+        <main
+          role="main"
+          aria-label="Sol-Dapper authentication"
+          className="relative z-10 min-h-screen flex items-center justify-center p-6"
+        >
+          <div className="w-full max-w-md mx-auto">
+            <LoginForm onLogin={login} />
+          </div>
+        </main>
+      </div>
     );
   }
 
@@ -219,15 +204,14 @@ export default function Home(): JSX.Element {
             We&apos;re preparing your personalized workspace...
           </p>
           
-          <Card className="p-10 border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
+                      <Card className="p-10 border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-6">
-              <div className="relative">
-                <div className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-              </div>
-              <div className="space-y-3 text-center">
-                <p className="font-medium text-foreground text-lg">Initializing workspace...</p>
-                <p className="text-muted-foreground">This will only take a moment</p>
-              </div>
+              <LoadingSpinner 
+                variant="branded" 
+                size="xl" 
+                text="Initializing workspace..." 
+                className="w-full"
+              />
               {registrationError && (
                 <div className="w-full p-4 rounded-xl bg-destructive/10 border border-destructive/20">
                   <p className="font-medium text-destructive mb-1">Setup Error</p>
@@ -305,15 +289,16 @@ export default function Home(): JSX.Element {
                 
                 {/* Character count */}
                 <div className="flex justify-between items-center mt-2 px-4">
-                  <p className="text-sm text-muted-foreground drop-shadow-sm">
+                  {/* <p className="text-sm text-muted-foreground drop-shadow-sm">
                     {prompt.length}/2000 characters
-                  </p>
-                  {isCreating && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground drop-shadow-sm">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Creating Project...
-                    </div>
-                  )}
+                  </p> */}
+                                  {isCreating && (
+                  <InlineLoader 
+                    size="sm" 
+                    text="Creating Project..." 
+                    className="text-sm text-muted-foreground drop-shadow-sm"
+                  />
+                )}
                 </div>
               </div>
             </div>

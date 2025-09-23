@@ -15,6 +15,7 @@ import {
   PanelLeft,
 } from "lucide-react"
 import Link from "next/link"
+import { InlineLoader } from "@/components/ui/loading-spinner"
 
 type ProjectStatus = "creating" | "generating" | "completed" | "error"
 
@@ -49,9 +50,9 @@ export function ProjectsSidebar({
   const getStatusIcon = (status: ProjectStatus = "completed") => {
     switch (status) {
       case "creating":
-        return <Loader2 className="h-3 w-3 animate-spin text-amber-500" />
+        return <InlineLoader size="sm" className="text-amber-500" />
       case "generating":
-        return <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+        return <InlineLoader size="sm" className="text-blue-500" />
       case "completed":
         return <CheckCircle className="h-3 w-3 text-green-500" />
       case "error":

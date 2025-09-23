@@ -21,6 +21,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { webContainerService } from '@/lib/webcontainer'
+import { InlineLoader } from '@/components/ui/loading-spinner'
 import type { ParsedFile } from '@/lib/xml-parser'
 import type { WebContainerProcess } from '@webcontainer/api'
 
@@ -283,7 +284,7 @@ export function WebContainerRunner({ files, isVisible, shouldUpdateFiles = false
   const getStepIcon = (status: ExecutionStep['status']) => {
     switch (status) {
       case 'running':
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+        return <InlineLoader size="sm" className="text-blue-500" />
       case 'success':
         return <CheckCircle className="h-4 w-4 text-green-500" />
       case 'error':
@@ -484,10 +485,7 @@ export function WebContainerRunner({ files, isVisible, shouldUpdateFiles = false
                     <div className="h-full rounded-lg overflow-hidden border relative">
                       {iframeLoading && (
                         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
-                          <div className="flex items-center gap-3">
-                            <Loader2 className="h-6 w-6 animate-spin" />
-                            <span className="font-medium">Loading preview...</span>
-                          </div>
+                          <InlineLoader size="md" text="Loading preview..." className="font-medium" />
                         </div>
                       )}
                       <iframe

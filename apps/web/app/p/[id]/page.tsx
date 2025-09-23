@@ -17,6 +17,7 @@ import { WebContainer, type WebContainerProcess } from "@webcontainer/api"
 import { WebContainerSingleton } from "../../../lib/webcontainer-singleton"
 import { AIResponseParser, type ParsedFile } from "../../../lib/xml-parser"
 import { Badge } from "../../../components/ui/badge"
+import { LoadingSpinner, InlineLoader } from "../../../components/ui/loading-spinner"
 
 interface Prompt {
   id: string
@@ -806,8 +807,7 @@ export default function ProjectPage(): JSX.Element {
       <div className="flex min-h-screen items-center justify-center p-6">
         <Card className="w-full max-w-md">
           <CardContent className="p-8 text-center">
-            <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin" />
-            <p className="text-muted-foreground">Loading...</p>
+            <LoadingSpinner variant="branded" size="lg" text="Loading..." />
           </CardContent>
         </Card>
       </div>
@@ -821,8 +821,7 @@ export default function ProjectPage(): JSX.Element {
       <div className="flex min-h-screen items-center justify-center p-6">
         <Card className="w-full max-w-md">
           <CardContent className="p-8 text-center">
-            <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin" />
-            <p className="text-muted-foreground">Redirecting...</p>
+            <LoadingSpinner variant="branded" size="lg" text="Redirecting..." />
           </CardContent>
         </Card>
       </div>
@@ -834,8 +833,7 @@ export default function ProjectPage(): JSX.Element {
       <div className="flex min-h-screen items-center justify-center p-6">
         <Card className="w-full max-w-md">
           <CardContent className="p-8 text-center">
-            <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin" />
-            <p className="text-muted-foreground">Loading project...</p>
+            <LoadingSpinner variant="branded" size="lg" text="Loading project..." />
           </CardContent>
         </Card>
       </div>
@@ -1000,10 +998,7 @@ export default function ProjectPage(): JSX.Element {
                         size="sm"
                       >
                         {isRunning ? (
-                          <>
-                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                            Running...
-                          </>
+                          <InlineLoader size="sm" text="Running..." />
                         ) : (
                           <>
                             <Play className="mr-2 h-3 w-3" />
