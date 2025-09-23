@@ -154,7 +154,7 @@ export function ChatInterface({
   }
 
     return (
-    <Card className="border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm flex flex-col max-h-[70vh]">
+    <Card className="border border-border/50 shadow-lg gap-0 bg-card/50 backdrop-blur-sm flex flex-col h-full">
       <CardHeader className="pb-3 flex-shrink-0">
         <CardTitle className="text-lg mb-1 flex items-center gap-2">
           <Bot className="h-4 w-4" />
@@ -167,8 +167,8 @@ export function ChatInterface({
       
       {/* Messages Area */}
       <CardContent className="flex-1 min-h-0 p-0 flex flex-col">
-        <ScrollArea className="flex-1 px-3 max-h-[40vh]">
-          <div className="space-y-3 py-3">
+        <ScrollArea className="flex-1 px-3 h-full">
+          <div>
             {messages.length === 0 ? (
               <div className="flex h-[200px] items-center justify-center">
                 <div className="text-center space-y-2">
@@ -244,61 +244,61 @@ export function ChatInterface({
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
-        
-        {/* Input Area */}
-        <div className="border-t border-border/50 p-3 space-y-3 flex-shrink-0">
-          {/* Model Selection */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Model:</span>
-            <Select value={selectedModel} onValueChange={onModelChange} disabled={isGenerating}>
-              <SelectTrigger className="w-auto min-w-[120px] h-7 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {availableModels.map((model) => (
-                  <SelectItem key={model.value} value={model.value}>
-                    <span className="text-xs">{model.label}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {/* Message Input */}
-          <div className="flex gap-2 items-end">
-            <div className="flex-1">
-              <Textarea
-                ref={textareaRef}
-                placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
-                value={newPrompt}
-                onChange={(e) => onPromptChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="min-h-[50px] max-h-[100px] resize-none text-xs leading-relaxed"
-                disabled={isGenerating}
-              />
-            </div>
-            <Button
-              onClick={handleSubmit}
-              disabled={!newPrompt.trim() || isGenerating}
-              className="h-[50px] px-3"
-              size="sm"
-            >
-              {isGenerating ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Send className="h-3 w-3" />
-              )}
-            </Button>
-          </div>
-          
-          {isGenerating && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="h-1.5 w-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-              AI is generating your response...
-            </div>
-          )}
-        </div>
       </CardContent>
+      
+      {/* Input Area - At Bottom of Card */}
+      <div className="border-t border-border/50 p-3 space-y-3 flex-shrink-0">
+        {/* Model Selection */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Model:</span>
+          <Select value={selectedModel} onValueChange={onModelChange} disabled={isGenerating}>
+            <SelectTrigger className="w-auto min-w-[120px] h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availableModels.map((model) => (
+                <SelectItem key={model.value} value={model.value}>
+                  <span className="text-xs">{model.label}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {/* Message Input */}
+        <div className="flex gap-2 items-end">
+          <div className="flex-1">
+            <Textarea
+              ref={textareaRef}
+              placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
+              value={newPrompt}
+              onChange={(e) => onPromptChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="min-h-[50px] max-h-[100px] resize-none text-xs leading-relaxed"
+              disabled={isGenerating}
+            />
+          </div>
+          <Button
+            onClick={handleSubmit}
+            disabled={!newPrompt.trim() || isGenerating}
+            className="h-[50px] px-3"
+            size="sm"
+          >
+            {isGenerating ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Send className="h-3 w-3" />
+            )}
+          </Button>
+        </div>
+        
+        {isGenerating && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="h-1.5 w-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+            AI is generating your response...
+          </div>
+        )}
+      </div>
     </Card>
   )
 } 

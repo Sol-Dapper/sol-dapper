@@ -441,6 +441,7 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
         model: modelProvider,
         messages,
         temperature: 0.7,
+        maxOutputTokens: 64000,
       });
     } catch (aiError) {
       console.error(`[${requestId}] AI provider error during stream initialization`, {

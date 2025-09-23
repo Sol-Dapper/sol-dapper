@@ -855,7 +855,7 @@ export default function ProjectPage(): JSX.Element {
         <div className="mx-auto h-full w-full px-6 py-4">
           <div className="grid h-full grid-cols-1 gap-4 xl:grid-cols-[30%_70%]">
             {/* Left Column: Chat Interface */}
-            <div className="flex min-h-0 flex-col space-y-4">
+            <div className="flex min-h-0 flex-col  space-y-4">
               {/* Chat Interface */}
               <ChatInterface
                 prompts={project?.prompts || []}
@@ -883,9 +883,6 @@ export default function ProjectPage(): JSX.Element {
                       <CardTitle className="text-xl mb-1">
                         {view === 'code' ? 'Project Files & Code Editor' : 'Live Preview'}
                       </CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        {view === 'code' ? 'Browse and edit project files' : 'See your project running live'}
-                      </p>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
                       <Button
@@ -1049,11 +1046,11 @@ export default function ProjectPage(): JSX.Element {
                       </Button>
                       
                       {/* WebContainer Status */}
-                      {containerReady && (
+                      {/* {containerReady && (
                         <Badge variant={containerReady ? "secondary" : "outline"} className="ml-2">
                           WebContainer Ready
                         </Badge>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 </CardHeader>
@@ -1112,26 +1109,8 @@ export default function ProjectPage(): JSX.Element {
                     )}
                   </div>
                   
-                  {/* Terminal Minimized Indicator */}
-                  {terminalOutput && !terminalOutput.trim() && (
-                    <div className="border-t border-border/50 bg-muted/30 h-8 flex items-center justify-between px-4 flex-shrink-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Terminal (hidden)</span>
-                      </div>
-                      <Button
-                        onClick={() => setTerminalOutput('🚀 Terminal ready...\n')}
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                        title="Show Terminal"
-                      >
-                        □
-                      </Button>
-                    </div>
-                  )}
-                  
                   {/* Terminal Section */}
-                  {terminalOutput && terminalOutput.trim() && (
+                  {terminalOutput && (
                     <div className="border-t border-border/50 bg-black/95 text-green-400 flex-shrink-0">
                       {/* Terminal Resize Handle */}
                       <div 
@@ -1178,15 +1157,6 @@ export default function ProjectPage(): JSX.Element {
                               title={isTerminalMinimized ? "Maximize Terminal" : "Minimize Terminal"}
                             >
                               {isTerminalMinimized ? '□' : '_'}
-                            </Button>
-                            <Button
-                              onClick={() => setTerminalOutput('')}
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                              title="Close Terminal"
-                            >
-                              ✕
                             </Button>
                           </div>
                         </div>

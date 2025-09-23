@@ -577,13 +577,13 @@ Generated on: ${new Date().toISOString()}
           {viewMode === 'code' || disableRuntime ? (
             <div className="flex gap-4">
               {/* File Tree */}
-              <Card style={{width: `${fileTreeWidth}px`}} className="flex-shrink-0">
-                <CardHeader className="pb-3">
+              <Card style={{width: `${fileTreeWidth}px`}} className="flex-shrink-0 h-[500px] overflow-hidden flex flex-col">
+                <CardHeader className="flex-shrink-0 pb-3">
                   <CardTitle className="text-base">File Explorer</CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <ScrollArea className={`h-[calc(100vh-${500 + (terminalOutput ? 200 : 0)}px)]`}>
-                    <div className="p-4">
+                <CardContent className="p-0 flex-1 overflow-hidden">
+                  <ScrollArea className="h-full">
+                    <div className="p-2">
                       <Tree
                         data={treeData}
                         handleSelect={handleFileSelect}
@@ -673,43 +673,6 @@ Generated on: ${new Date().toISOString()}
           )}
         </div>
       )}
-
-      {/* Artifact Header */}
-      {hasArtifact && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center">
-              <Zap className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">{parsedResponse.artifact!.title}</h3>
-              <p className="text-sm text-muted-foreground">ID: {parsedResponse.artifact!.id}</p>
-            </div>
-          </div>
-          
-          {terminalOutput && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Terminal className="h-4 w-4" />
-                  Project Terminal
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-black/90 rounded-md p-3 max-h-64 overflow-y-auto">
-                  <pre className="text-xs font-mono text-green-400 whitespace-pre-wrap">
-                    {terminalOutput}
-                  </pre>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
-
-
-      {/* Code Blocks - Removed: Files are now shown only in the file tree + Monaco editor above */}
 
       {/* Code Review */}
       {hasReview && (
