@@ -29,7 +29,6 @@ interface ProjectWithStatus extends Project {
 }
 
 const AVAILABLE_MODELS = [
-  { value: "gpt-4o", label: "GPT-4o"},
   { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet"},
   { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
 ] as const
@@ -42,7 +41,7 @@ export default function Home(): JSX.Element {
   
   // Form state
   const [prompt, setPrompt] = useState<string>("")
-  const [selectedModel, setSelectedModel] = useState<string>("gpt-4o")
+  const [selectedModel, setSelectedModel] = useState<string>("claude-3-7-sonnet-20250219")
   const [isCreating, setIsCreating] = useState<boolean>(false)
   const [error, setError] = useState<string>("")
 

@@ -30,11 +30,6 @@ interface ProjectWithStatus extends Project {
 }
 
 const AVAILABLE_MODELS = [
-  { value: "gpt-4o", label: "GPT-4o"},
-  { value: "gpt-4o-mini", label: "GPT-4o Mini" },
-  { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
-  { value: "gpt-4", label: "GPT-4" },
-  { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
   { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet"},
   { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
 ] as const
@@ -43,7 +38,7 @@ export function PromptInterface(): JSX.Element {
   const { getAccessToken } = usePrivy()
   const router = useRouter()
   const [prompt, setPrompt] = useState<string>("")
-  const [selectedModel, setSelectedModel] = useState<string>("gpt-4o")
+  const [selectedModel, setSelectedModel] = useState<string>("claude-3-7-sonnet-20250219")
   const [projects, setProjects] = useState<ProjectWithStatus[]>([])
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [streamingResponse, setStreamingResponse] = useState<string>("")
