@@ -28,10 +28,7 @@ const styles = `
   }
 `;
 
-// Inject styles into document
-const styleSheet = document.createElement("style");
-styleSheet.innerText = styles;
-document.head.appendChild(styleSheet);
+// Styles will be injected by the PromptInputBox component
 
 // Textarea Component
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -470,6 +467,19 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
   const setInputValue = onValueChange !== undefined ? onValueChange : setInput;
   const [showModelDropdown, setShowModelDropdown] = React.useState(false);
   const promptBoxRef = React.useRef<HTMLDivElement>(null);
+
+  // Inject styles on component mount
+  React.useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const existingStyleSheet = document.getElementById('ai-prompt-box-styles');
+      if (!existingStyleSheet) {
+        const styleSheet = document.createElement("style");
+        styleSheet.id = 'ai-prompt-box-styles';
+        styleSheet.innerText = styles;
+        document.head.appendChild(styleSheet);
+      }
+    }
+  }, []);
 
   // Handle model selection
   const handleModelSelect = (model: string) => {
