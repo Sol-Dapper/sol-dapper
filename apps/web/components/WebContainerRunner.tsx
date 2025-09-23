@@ -1,8 +1,9 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -12,10 +13,8 @@ import {
   Package, 
   Terminal, 
   ExternalLink,
-  Loader2,
   CheckCircle,
   AlertTriangle,
-  Zap,
   Monitor,
   Maximize2,
   RefreshCw
@@ -309,8 +308,14 @@ export function WebContainerRunner({ files, isVisible, shouldUpdateFiles = false
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-purple-100 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 flex items-center justify-center">
-                <Zap className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <div className="h-8 w-8 rounded-lg bg-purple-100 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 flex items-center justify-center overflow-hidden">
+                <Image 
+                  src="/dapperGithub.jpg" 
+                  alt="Sol-Dapper" 
+                  width={32} 
+                  height={32} 
+                  className="object-cover rounded-lg" 
+                />
               </div>
               <div>
                 <CardTitle className="text-xl">WebContainer Runtime</CardTitle>

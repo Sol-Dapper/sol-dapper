@@ -62,7 +62,6 @@ export class AIResponseParser {
    * Parse AI response text that may contain XML tags for files, code, etc.
    */
   parseResponse(response: string, isStreaming: boolean = false): ParsedResponse {
-    console.log('XML Parser - Input response:', response, 'isStreaming:', isStreaming);
     
     const result: ParsedResponse = {
       files: [],
@@ -93,7 +92,6 @@ export class AIResponseParser {
     // Also parse as steps for the Builder component
     result.steps = parseForgeXml(response);
 
-    console.log('XML Parser - Final result:', result);
     return result;
   }
 
@@ -102,19 +100,10 @@ export class AIResponseParser {
    * AI files take precedence - boilerplate only fills in missing files
    */
   parseResponseWithBoilerplate(response: string, boilerplateComponents: string): ParsedResponse {
-    console.log('XML Parser - Adding boilerplate to fill gaps in AI response');
     const aiResult = this.parseResponse(response, false);
     const boilerplateResult = this.parseResponse(boilerplateComponents, false);
     
-    console.log('XML Parser - AI response parsed:', {
-      files: aiResult.files.length,
-      directories: aiResult.directories.length
-    });
     
-    console.log('XML Parser - Boilerplate parsed:', {
-      files: boilerplateResult.files.length,
-      directories: boilerplateResult.directories.length
-    });
     
     // Start with AI files (these take precedence)
     const mergedFiles: ParsedFile[] = [...aiResult.files];
@@ -125,9 +114,6 @@ export class AIResponseParser {
       const aiFileExists = aiResult.files.some(aiFile => aiFile.path === boilerplateFile.path);
       if (!aiFileExists) {
         mergedFiles.push(boilerplateFile);
-        console.log('XML Parser - Adding missing boilerplate file:', boilerplateFile.path);
-      } else {
-        console.log('XML Parser - AI provided file, skipping boilerplate:', boilerplateFile.path);
       }
     });
     
@@ -136,9 +122,6 @@ export class AIResponseParser {
       const aiDirExists = aiResult.directories.some(aiDir => aiDir.path === boilerplateDir.path);
       if (!aiDirExists) {
         mergedDirectories.push(boilerplateDir);
-        console.log('XML Parser - Adding missing boilerplate directory:', boilerplateDir.path);
-      } else {
-        console.log('XML Parser - AI provided directory, skipping boilerplate:', boilerplateDir.path);
       }
     });
     
@@ -169,7 +152,6 @@ export class AIResponseParser {
    * New AI files take precedence - existing files are preserved only if not overwritten
    */
   parseResponseWithExistingFiles(newResponse: string, existingFiles: string, boilerplateComponents?: string): ParsedResponse {
-    console.log('XML Parser - Merging new AI response with existing files');
     
     // Parse the new AI response
     const newResult = this.parseResponse(newResponse, false);
@@ -177,15 +159,7 @@ export class AIResponseParser {
     // Parse existing files
     const existingResult = this.parseResponse(existingFiles, false);
     
-    console.log('XML Parser - New AI response parsed:', {
-      files: newResult.files.length,
-      directories: newResult.directories.length
-    });
     
-    console.log('XML Parser - Existing files parsed:', {
-      files: existingResult.files.length,
-      directories: existingResult.directories.length
-    });
     
     // Start with existing files
     const mergedFiles: ParsedFile[] = [...existingResult.files];
@@ -197,11 +171,9 @@ export class AIResponseParser {
       if (existingFileIndex >= 0) {
         // Replace existing file with new version
         mergedFiles[existingFileIndex] = newFile;
-        console.log('XML Parser - Updated existing file:', newFile.path);
       } else {
         // Add new file
         mergedFiles.push(newFile);
-        console.log('XML Parser - Added new file:', newFile.path);
       }
     });
     
@@ -211,11 +183,9 @@ export class AIResponseParser {
       if (existingDirIndex >= 0) {
         // Replace existing directory with new version
         mergedDirectories[existingDirIndex] = newDir;
-        console.log('XML Parser - Updated existing directory:', newDir.path);
       } else {
         // Add new directory
         mergedDirectories.push(newDir);
-        console.log('XML Parser - Added new directory:', newDir.path);
       }
     });
     
@@ -227,7 +197,6 @@ export class AIResponseParser {
         const fileExists = mergedFiles.some(file => file.path === boilerplateFile.path);
         if (!fileExists) {
           mergedFiles.push(boilerplateFile);
-          console.log('XML Parser - Added missing boilerplate file:', boilerplateFile.path);
         }
       });
       
@@ -235,7 +204,6 @@ export class AIResponseParser {
         const dirExists = mergedDirectories.some(dir => dir.path === boilerplateDir.path);
         if (!dirExists) {
           mergedDirectories.push(boilerplateDir);
-          console.log('XML Parser - Added missing boilerplate directory:', boilerplateDir.path);
         }
       });
     }
@@ -266,14 +234,12 @@ export class AIResponseParser {
    * Parse streaming content - handles incomplete XML during generation
    */
   private parseStreamingContent(response: string, result: ParsedResponse) {
-    console.log('XML Parser - Parsing streaming content');
     
     // Look for the start of a forgeArtifact block
     const artifactStartRegex = /<forgeArtifact\s+([^>]*)>/i;
     const artifactStartMatch = artifactStartRegex.exec(response);
     
     if (!artifactStartMatch) {
-      console.log('XML Parser - No forgeArtifact start found in streaming content');
       return;
     }
 
@@ -300,7 +266,6 @@ export class AIResponseParser {
     const actionRegex = /<forgeAction\s+([^>]*?)>([\s\S]*?)<\/forgeAction>/gi;
     let actionMatch;
     
-    console.log('XML Parser - Searching for complete forgeAction elements in streaming content...');
     
     while ((actionMatch = actionRegex.exec(contentAfterTag)) !== null) {
       const actionAttributes = actionMatch[1] || '';
@@ -313,7 +278,6 @@ export class AIResponseParser {
       const type = typeMatch ? typeMatch[1] : '';
       const filePath = filePathMatch ? filePathMatch[1] : '';
       
-      console.log('XML Parser - Found streaming forgeAction:', { type, filePath });
 
       if (type === 'file' && filePath && actionContent) {
         // Handle file actions

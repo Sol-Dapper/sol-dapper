@@ -6,13 +6,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { ChevronDown, LogOut, Wallet, Mail, Shield, Menu, Zap, Copy, Check } from "lucide-react"
+import { ChevronDown, LogOut, Menu, Copy, Check } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { ThemeToggle } from "./theme-toggle"
 
@@ -77,8 +77,14 @@ export function Navigation({ user, onLogout }: NavigationProps) {
         {/* Logo */}
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
-              <Zap className="h-6 w-6 text-primary" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 overflow-hidden">
+              <Image 
+                src="/dapperGithub.jpg" 
+                alt="Sol-Dapper Logo" 
+                width={40} 
+                height={40} 
+                className="object-cover rounded-2xl" 
+              />
             </div>
             <h1 className="text-2xl font-bold text-foreground">Sol-Dapper</h1>
           </Link>

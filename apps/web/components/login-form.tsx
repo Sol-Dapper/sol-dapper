@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Zap } from "lucide-react"
+import Image from "next/image"
 
 interface LoginFormProps extends React.ComponentProps<"div"> {
   onLogin: () => void
@@ -23,10 +23,16 @@ export function LoginForm({
       <Card className="border border-border/60 shadow-lg bg-card/80 backdrop-blur-md">
         <CardHeader className="text-center space-y-4">
           <div
-            className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-muted/30 border border-border/60 shadow-sm mx-auto"
+            className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-muted/30 border border-border/60 shadow-sm mx-auto overflow-hidden"
             aria-hidden="true"
           >
-            <Zap className="h-10 w-10 text-primary" />
+            <Image 
+              src="/dapperGithub.jpg" 
+              alt="Sol-Dapper Logo" 
+              width={80} 
+              height={80} 
+              className="object-cover rounded-2xl" 
+            />
           </div>
           <div className="space-y-2">
             <CardTitle className="text-3xl font-bold tracking-tight drop-shadow-sm">Welcome to Sol-Dapper</CardTitle>
@@ -43,7 +49,14 @@ export function LoginForm({
               className="w-full h-12 text-base font-medium transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               aria-label="Sign in with Privy"
             >
-              <Zap className="mr-2 h-5 w-5" aria-hidden="true" />
+              <Image 
+                src="/dapperGithub.jpg" 
+                alt="Sol-Dapper" 
+                width={20} 
+                height={20} 
+                className="mr-2 rounded-sm object-cover" 
+                aria-hidden="true" 
+              />
               Sign in with Privy
             </Button>
           </div>

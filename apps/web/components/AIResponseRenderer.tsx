@@ -11,8 +11,6 @@ import {
   CheckCircle, 
   AlertTriangle,
   Info,
-  Zap,
-  Terminal,
   Download,
   Play
 } from 'lucide-react'

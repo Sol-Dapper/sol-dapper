@@ -39,7 +39,6 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     req.privyUserId = payload.sub as string
     next()
   } catch (error) {
-    console.error("Token verification error:", error)
     // CORS headers are already set above
     res.status(401).json({ error: "Invalid or expired token" })
   }

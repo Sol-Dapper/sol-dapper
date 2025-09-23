@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
@@ -11,7 +10,6 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  Loader2,
   PanelLeft,
 } from "lucide-react"
 import Link from "next/link"

@@ -10,7 +10,8 @@ import { Separator } from "./ui/separator"
 import { ScrollArea } from "./ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Label } from "./ui/label"
-import { Send, Loader2, AlertCircle, Zap } from "lucide-react"
+import { Send, Loader2, AlertCircle } from "lucide-react"
+import Image from "next/image"
 import { ProjectsSidebar } from "./ProjectsSidebar"
 import { AIResponseRenderer } from "./AIResponseRenderer"
 import { API_BASE_URL } from "../lib/api"
@@ -220,8 +221,14 @@ export function PromptInterface(): JSX.Element {
             <Card className="h-full border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-6">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
-                    <Zap className="h-6 w-6 text-primary" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 overflow-hidden">
+                    <Image 
+                      src="/dapperGithub.jpg" 
+                      alt="Sol-Dapper" 
+                      width={48} 
+                      height={48} 
+                      className="object-cover rounded-2xl" 
+                    />
                   </div>
                   <div>
                     <CardTitle className="text-2xl mb-2">Create Solana App</CardTitle>
@@ -311,8 +318,14 @@ export function PromptInterface(): JSX.Element {
             <Card className="flex min-h-0 flex-1 flex-col border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-6">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
-                    <Zap className="h-6 w-6 text-primary" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 overflow-hidden">
+                    <Image 
+                      src="/dapperGithub.jpg" 
+                      alt="Sol-Dapper" 
+                      width={48} 
+                      height={48} 
+                      className="object-cover rounded-2xl" 
+                    />
                   </div>
                   <div>
                     <CardTitle className="text-2xl mb-2">Generation Output</CardTitle>
@@ -336,8 +349,14 @@ export function PromptInterface(): JSX.Element {
                     ) : (
                       <div className="flex h-[350px] items-center justify-center">
                         <div className="text-center space-y-6">
-                          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-muted/30 border border-border/30 mx-auto">
-                            <Zap className="h-10 w-10 text-muted-foreground" />
+                          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-muted/30 border border-border/30 mx-auto overflow-hidden">
+                            <Image 
+                              src="/dapperGithub.jpg" 
+                              alt="Sol-Dapper" 
+                              width={80} 
+                              height={80} 
+                              className="object-cover rounded-3xl opacity-60" 
+                            />
                           </div>
                           <div className="space-y-3">
                             <p className="font-semibold text-foreground text-xl">Ready to Generate</p>
