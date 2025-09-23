@@ -220,8 +220,8 @@ const FolderComponent = forwardRef<
             !isSelectable && "cursor-not-allowed opacity-50",
           )}
           onClick={() => {
+            handleExpand?.(value!)
             if (isSelectable) {
-              handleExpand?.(value!)
               handleSelect?.(value!)
             }
           }}

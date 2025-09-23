@@ -876,11 +876,11 @@ export default function ProjectPage(): JSX.Element {
 
             {/* Right Column: Code Editor or Preview */}
             <div className="flex min-h-0 flex-col h-full">
-              <Card className="min-h-0 h-full border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm flex flex-col">
-                <CardHeader className="pb-4 flex-shrink-0">
+              <Card className="min-h-0 h-full py-2 border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm flex flex-col">
+                <CardHeader className="pb-1 flex-shrink-0">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="text-xl mb-1">
+                      <CardTitle className="text-xl mt-1 mb-1">
                         {view === 'code' ? 'Project Files & Code Editor' : 'Live Preview'}
                       </CardTitle>
                     </div>
@@ -1111,7 +1111,7 @@ export default function ProjectPage(): JSX.Element {
                   
                   {/* Terminal Section */}
                   {terminalOutput && (
-                    <div className="border-t border-border/50 bg-black/95 text-green-400 flex-shrink-0">
+                    <div className="border-t border-border/50 bg-black/95 text-green-300 flex-shrink-0">
                       {/* Terminal Resize Handle */}
                       <div 
                         className="h-1 bg-border/30 hover:bg-border cursor-row-resize flex items-center justify-center group"
@@ -1143,9 +1143,9 @@ export default function ProjectPage(): JSX.Element {
                       >
                         <div className="flex items-center justify-between px-4 py-2 bg-black/50 border-b border-border/30">
                           <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                            {/* <div className="w-3 h-3 rounded-full bg-red-500"></div>
                             <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-green-500"></div> */}
                             <span className="text-xs text-muted-foreground ml-2">Terminal</span>
                           </div>
                           <div className="flex items-center gap-1">
@@ -1153,10 +1153,10 @@ export default function ProjectPage(): JSX.Element {
                               onClick={() => setIsTerminalMinimized(!isTerminalMinimized)}
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                              className="h-6 w-6 p-0 text-2xl border border-white text-muted-foreground hover:text-foreground"
                               title={isTerminalMinimized ? "Maximize Terminal" : "Minimize Terminal"}
                             >
-                              {isTerminalMinimized ? '□' : '_'}
+                              {isTerminalMinimized ? '↑' : '↓'}
                             </Button>
                           </div>
                         </div>

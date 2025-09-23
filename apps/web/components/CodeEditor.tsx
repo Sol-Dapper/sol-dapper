@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Copy, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTheme } from 'next-themes'
 
 interface CodeEditorProps {
   code: string
@@ -15,7 +16,6 @@ interface CodeEditorProps {
   filename?: string
   readonly?: boolean
   height?: string | number
-  theme?: 'light' | 'dark' | 'auto'
   className?: string
   showHeader?: boolean
   showActions?: boolean
@@ -30,7 +30,6 @@ export function CodeEditor({
   filename,
   readonly = true,
   height = 400,
-  theme = 'auto',
   className,
   showHeader = true,
   showActions = true,
@@ -38,6 +37,7 @@ export function CodeEditor({
   isStreaming = false,
   streamingSpeed = 5,
 }: CodeEditorProps) {
+  const { theme, systemTheme } = useTheme()
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const [displayedCode, setDisplayedCode] = React.useState('')
   const [isStreamingActive, setIsStreamingActive] = React.useState(false)
@@ -198,18 +198,18 @@ export function CodeEditor({
   }
 
   const getTheme = () => {
-    if (theme === 'auto') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'solana-dark'
-        : 'solana-light'
+    // Handle system theme
+    if (theme === 'system') {
+      return systemTheme === 'dark' ? 'solana-dark' : 'solana-light'
     }
+    // Handle explicit theme
     return theme === 'dark' ? 'solana-dark' : 'solana-light'
   }
 
   return (
-    <Card className={cn('overflow-hidden', className)}>
+    <Card className={cn('overflow-hidden py-2', className)}>
       {showHeader && (
-        <CardHeader className="pb-3">
+        <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <CardTitle className="text-lg font-semibold">

@@ -348,7 +348,7 @@ export function AIResponseRenderer({ response, existingFiles = "", useBoilerplat
     const convertToTreeElement = (file: ParsedFile): TreeViewElement => ({
       id: file.id,
       name: file.name,
-      isSelectable: true,
+      isSelectable: !file.isDirectory, // Directories should not be selectable
       children: file.children?.map(convertToTreeElement),
     })
 
@@ -357,8 +357,6 @@ export function AIResponseRenderer({ response, existingFiles = "", useBoilerplat
 
   const handleFileSelect = (fileId: string) => {
     if (!parsedResponse) return
-    
-    setSelectedFileId(fileId)
     
     // Find the file in the parsed data
     const findFile = (files: ParsedFile[], id: string): ParsedFile | null => {
@@ -374,7 +372,12 @@ export function AIResponseRenderer({ response, existingFiles = "", useBoilerplat
 
     const allFiles = [...parsedResponse.files, ...parsedResponse.directories]
     const file = findFile(allFiles, fileId)
-    setSelectedFile(file)
+    
+    // Only select actual files, not directories
+    if (file && !file.isDirectory) {
+      setSelectedFileId(fileId)
+      setSelectedFile(file)
+    }
   }
 
   const downloadProject = async () => {
@@ -575,9 +578,9 @@ Generated on: ${new Date().toISOString()}
           </div>
           
           {viewMode === 'code' || disableRuntime ? (
-            <div className="flex gap-4">
+            <div className="flex gap-1">
               {/* File Tree */}
-              <Card style={{width: `${fileTreeWidth}px`}} className="flex-shrink-0 h-[500px] overflow-hidden flex flex-col">
+              <Card style={{width: `${fileTreeWidth}px`}} className="flex-shrink-0 h-[585px]  overflow-hidden flex flex-col">
                 <CardHeader className="flex-shrink-0 pb-3">
                   <CardTitle className="text-base">File Explorer</CardTitle>
                 </CardHeader>
@@ -623,7 +626,7 @@ Generated on: ${new Date().toISOString()}
               )}
 
               {/* Code Editor */}
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 py-0 min-w-0">
                 {selectedFile ? (
                   <div className="relative">
                     {isStreaming && selectedFile && !isBoilerplateFile(selectedFile.path) && (
@@ -640,7 +643,7 @@ Generated on: ${new Date().toISOString()}
                       code={streamingFileContent || selectedFile.content}
                       language={selectedFile.language}
                       filename={selectedFile.name}
-                      height={500}
+                      height={529}
                       readonly={true} // Make it readonly
                       isStreaming={isStreaming && !isBoilerplateFile(selectedFile.path)}
                       streamingSpeed={10} // Characters per interval
