@@ -2,24 +2,21 @@
 
 import { useParams, useSearchParams, useRouter } from "next/navigation"
 import { usePrivy } from "@privy-io/react-auth"
-import { useState, useEffect, useCallback, useRef, type JSX } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo, type JSX } from "react"
 import { Button } from "../../../components/ui/button"
-import { Textarea } from "../../../components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Separator } from "../../../components/ui/separator"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { Navigation } from "../../../components/navigation"
 import { ProjectsSidebar } from "../../../components/ProjectsSidebar"
 import { AIResponseRenderer } from "../../../components/AIResponseRenderer"
-import { Send, Loader2, AlertCircle, Calendar, Play, Square, Terminal, ExternalLink, RefreshCw } from "lucide-react"
+import { ChatInterface } from "../../../components/ChatInterface"
+import { Loader2, AlertCircle, Calendar, Play, Square, Terminal, RefreshCw } from "lucide-react"
 import Link from "next/link"
-import { Label } from "../../../components/ui/label"
 import { API_BASE_URL } from "../../../lib/api"
 import { WebContainer, type WebContainerProcess } from "@webcontainer/api"
 import { WebContainerSingleton } from "../../../lib/webcontainer-singleton"
 import { AIResponseParser, type ParsedFile } from "../../../lib/xml-parser"
 import { Badge } from "../../../components/ui/badge"
-import { ScrollArea } from "../../../components/ui/scroll-area"
 
 interface Prompt {
   id: string
@@ -77,6 +74,8 @@ export default function ProjectPage(): JSX.Element {
   const [streamingResponse, setStreamingResponse] = useState<string>("")
   const [projectFiles, setProjectFiles] = useState<string>("")
   const [existingFiles, setExistingFiles] = useState<string>("") // Store existing files separately
+  const [currentUserQuery, setCurrentUserQuery] = useState<string>("") // Current user query for conversation
+  const [currentAIPlainText, setCurrentAIPlainText] = useState<string>("") // Extracted plain text from AI response
 
   // Projects state for sidebar
   const [projects, setProjects] = useState<ProjectWithStatus[]>([])
@@ -97,7 +96,16 @@ export default function ProjectPage(): JSX.Element {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const terminalRef = useRef<HTMLPreElement>(null)
   
-  const parser = new AIResponseParser()
+  const parser = useMemo(() => new AIResponseParser(), [])
+
+  // Extract plain text from streaming response for conversation display
+  useEffect(() => {
+    if (streamingResponse) {
+      // Use optimized streaming plain text extraction
+      const plainText = parser.extractStreamingPlainText(streamingResponse)
+      setCurrentAIPlainText(plainText)
+    }
+  }, [streamingResponse, parser])
 
   // Function to clean ANSI codes from terminal output
   const cleanAnsiCodes = (text: string) => {
@@ -581,16 +589,60 @@ export default function ProjectPage(): JSX.Element {
   }
 
   const stopDevServer = async () => {
-    if (currentProcess) {
-      currentProcess.kill()
-      setCurrentProcess(null)
+    try {
+      if (currentProcess) {
+        // Kill the current process
+        currentProcess.kill()
+        setCurrentProcess(null)
+        setTerminalOutput(prev => prev + '\n🛑 Killing development server process...\n')
+      }
+      
+      // Additional cleanup - try to kill any Node.js processes in WebContainer
+      if (webcontainer) {
+        try {
+          // Kill any node processes
+          const killNodeProc = await webcontainer.spawn('pkill', ['-f', 'node'])
+          await killNodeProc.exit
+          setTerminalOutput(prev => prev + '\n🛑 Killed Node.js processes\n')
+        } catch (err) {
+          // pkill will fail if no processes found, which is expected
+          setTerminalOutput(prev => prev + '\n🛑 No additional Node.js processes found\n')
+        }
+        
+        try {
+          // Also try to kill any npm/pnpm processes
+          const killPnpmProc = await webcontainer.spawn('pkill', ['-f', 'pnpm'])
+          await killPnpmProc.exit
+          setTerminalOutput(prev => prev + '\n🛑 Killed pnpm processes\n')
+        } catch (err) {
+          // Expected when no pnpm processes are running
+        }
+      }
+      
+      // Reset all states
       setIsRunning(false)
       setPreviewUrl('')
-      setTerminalOutput(prev => prev + '\n🛑 Development server stopped\n')
+      setTerminalOutput(prev => prev + '\n✅ Development server stopped successfully\n')
+      
       addStep({
         id: 'stop',
         name: 'Stopped development server',
         status: 'success'
+      })
+      
+    } catch (err) {
+      console.error('Error in stopDevServer:', err)
+      setTerminalOutput(prev => prev + `\n❌ Error stopping server: ${err}\n`)
+      
+      // Force reset states even if there was an error
+      setIsRunning(false)
+      setCurrentProcess(null)
+      setPreviewUrl('')
+      
+      addStep({
+        id: 'stop',
+        name: 'Force stopped server (with errors)',
+        status: 'error'
       })
     }
   }
@@ -685,6 +737,8 @@ export default function ProjectPage(): JSX.Element {
     setIsGenerating(true)
     setStreamingResponse("")
     setError("")
+    setCurrentUserQuery(newPrompt) // Store current user query for conversation display
+    setCurrentAIPlainText("") // Clear previous AI response
 
     try {
       const token = await getAccessToken()
@@ -729,6 +783,8 @@ export default function ProjectPage(): JSX.Element {
 
       await loadProject()
       setStreamingResponse("") // Clear streaming response after project reload
+      setCurrentUserQuery("") // Clear current user query
+      setCurrentAIPlainText("") // Clear current AI plain text
       setNewPrompt("")
     } catch (err) {
       console.error("Error sending prompt:", err)
@@ -745,6 +801,8 @@ export default function ProjectPage(): JSX.Element {
     setIsGenerating(true)
     setStreamingResponse("")
     setError("")
+    setCurrentUserQuery(prompt) // Store current user query for conversation display
+    setCurrentAIPlainText("") // Clear previous AI response
 
     try {
       const token = await getAccessToken()
@@ -791,6 +849,8 @@ export default function ProjectPage(): JSX.Element {
 
       await loadProject()
       setStreamingResponse("") // Clear streaming response after project reload
+      setCurrentUserQuery("") // Clear current user query
+      setCurrentAIPlainText("") // Clear current AI plain text
     } catch (err) {
       console.error("Error in initial generation:", err)
       setError(err instanceof Error ? err.message : "Failed to process initial request")
@@ -869,330 +929,30 @@ export default function ProjectPage(): JSX.Element {
         topOffset={64}
       />
       
-      {/* Project Header */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex w-full items-center justify-between px-12 py-6">
-          <div className="flex items-center gap-6">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">Project</h2>
-              <p className="text-muted-foreground leading-relaxed">{project?.description}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span>Created: {project ? new Date(project.createdAt).toLocaleDateString() : ""}</span>
-            </div>
-            {containerReady && (
-              <Badge variant={containerReady ? "secondary" : "outline"}>
-                WebContainer {containerReady ? "Ready" : "Loading"}
-              </Badge>
-            )}
-          </div>
-        </div>
-      </div>
+
 
       {/* Main Content */}
       <main className="flex-1 bg-background">
         <div className="mx-auto h-full w-full px-12 py-8">
           <div className="grid h-full grid-cols-1 gap-6 xl:grid-cols-[30%_70%]">
-            {/* Left Column: Input & Controls */}
+            {/* Left Column: Chat Interface */}
             <div className="flex min-h-0 flex-col space-y-6">
-              {/* Input Card */}
-              <Card className="border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
-                <CardHeader className="pb-6">
-                  <CardTitle className="text-xl mb-2">Continue Working</CardTitle>
-                  <p className="text-sm text-muted-foreground leading-relaxed">Ask questions, request changes, or add new features</p>
-                </CardHeader>
-                <Separator />
-                <CardContent className="space-y-6 pt-6">
-                  <div>
-                    <Label htmlFor="prompt" className="mb-3 block text-sm font-medium">
-                      Your Message
-                    </Label>
-                    <Textarea
-                      id="prompt"
-                      placeholder="Ask a question, request changes, or add new features..."
-                      value={newPrompt}
-                      onChange={(e) => setNewPrompt(e.target.value)}
-                      className="min-h-[120px] resize-none text-sm leading-relaxed"
-                      disabled={isGenerating}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="model" className="mb-3 block text-sm font-medium">
-                      AI Model
-                    </Label>
-                    <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isGenerating}>
-                      <SelectTrigger className="w-full h-10">
-                        <SelectValue placeholder="Select a model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {AVAILABLE_MODELS.map((model) => (
-                          <SelectItem key={model.value} value={model.value} className="py-2">
-                            <span className="text-sm font-medium">{model.label}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!newPrompt.trim() || isGenerating}
-                    className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90 border-0"
-                    size="lg"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="mr-2 h-5 w-5" />
-                        Send Message
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* WebContainer Controls */}
-              <Card className="border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg mb-1">Project Runtime</CardTitle>
-                  <p className="text-sm text-muted-foreground">Run your project in the browser</p>
-                </CardHeader>
-                <Separator />
-                <CardContent className="pt-4 space-y-4">
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      onClick={startDevServer}
-                      disabled={!containerReady || isRunning}
-                      variant="default"
-                      size="sm"
-                    >
-                      {isRunning ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Starting...
-                        </>
-                      ) : (
-                        <>
-                          <Play className="mr-2 h-4 w-4" />
-                          Start Dev Server
-                        </>
-                      )}
-                    </Button>
-
-                    <Button
-                      onClick={async () => {
-                        if (!webcontainer || !containerReady) return
-                        
-                        try {
-                          // Kill any running processes first
-                          if (currentProcess) {
-                            currentProcess.kill()
-                            setCurrentProcess(null)
-                            setTerminalOutput(prev => prev + '\n🛑 Stopped previous installation process\n')
-                          }
-                          
-                          setTerminalOutput(prev => prev + '\n--- Installing with pnpm (faster alternative) ---\n')
-                          const pnpmInstall = await webcontainer.spawn('pnpm', [
-                            'install', 
-                            '--no-frozen-lockfile',
-                            '--registry=https://registry.npmjs.org/',
-                            '--fetch-timeout=300000',
-                            '--fetch-retries=3'
-                          ])
-                          
-                          pnpmInstall.output.pipeTo(new WritableStream({
-                            write(data) {
-                              const cleanData = cleanAnsiCodes(data)
-                              setTerminalOutput(prev => prev + cleanData)
-                            }
-                          })).catch(console.error)
-                          
-                          const exitCode = await pnpmInstall.exit
-                          if (exitCode === 0) {
-                            setTerminalOutput(prev => prev + '\n✅ pnpm install completed successfully!\n')
-                            // Mark installation as complete so dev server can start
-                            addStep({
-                              id: 'install',
-                              name: 'Dependencies installed (pnpm)',
-                              status: 'success'
-                            })
-                          } else {
-                            setTerminalOutput(prev => prev + `\n❌ pnpm install failed with exit code ${exitCode}\n`)
-                            addStep({
-                              id: 'install',
-                              name: 'pnpm install failed',
-                              status: 'error'
-                            })
-                          }
-                        } catch (err) {
-                          setTerminalOutput(prev => prev + `\n❌ pnpm install error: ${err}\n`)
-                        }
-                      }}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Try pnpm (Faster)
-                    </Button>
-                    
-                    <Button
-                      onClick={stopDevServer}
-                      disabled={!isRunning}
-                      variant="destructive"
-                      size="sm"
-                    >
-                      <Square className="mr-2 h-4 w-4" />
-                      Stop
-                    </Button>
-
-                    <Button
-                      onClick={async () => {
-                        if (!webcontainer || !containerReady) return
-                        
-                        try {
-                          // Kill any running processes first
-                          if (currentProcess) {
-                            currentProcess.kill()
-                            setCurrentProcess(null)
-                            setTerminalOutput(prev => prev + '\n🛑 Stopped previous installation process\n')
-                          }
-                          
-                          setTerminalOutput(prev => prev + '\n--- Installing minimal dependencies ---\n')
-                          // Try installing with minimal flags and offline cache
-                          const minimalInstall = await webcontainer.spawn('npm', [
-                            'install', 
-                            '--prefer-offline',
-                            '--no-audit',
-                            '--no-fund',
-                            '--production',
-                            '--silent'
-                          ])
-                          
-                          minimalInstall.output.pipeTo(new WritableStream({
-                            write(data) {
-                              const cleanData = cleanAnsiCodes(data)
-                              setTerminalOutput(prev => prev + cleanData)
-                            }
-                          })).catch(console.error)
-                          
-                          const exitCode = await minimalInstall.exit
-                          if (exitCode === 0) {
-                            setTerminalOutput(prev => prev + '\n✅ Minimal install completed!\n')
-                            addStep({
-                              id: 'install',
-                              name: 'Minimal dependencies installed',
-                              status: 'success'
-                            })
-                          } else {
-                            addStep({
-                              id: 'install',
-                              name: 'Minimal install failed',
-                              status: 'error'
-                            })
-                          }
-                        } catch (err) {
-                          setTerminalOutput(prev => prev + `\n❌ Minimal install error: ${err}\n`)
-                        }
-                      }}
-                      variant="secondary"
-                      size="sm"
-                    >
-                      Minimal Install
-                    </Button>
-
-                    <Button
-                      onClick={() => {
-                        // Force reset all states
-                        setIsRunning(false)
-                        setCurrentProcess(null)
-                        setSteps([])
-                        setTerminalOutput(prev => prev + '\n--- Force reset all processes ---\n')
-                        console.log('Force reset triggered')
-                      }}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Force Reset
-                    </Button>
+              {/* Chat Interface */}
+              <ChatInterface
+                prompts={project?.prompts || []}
+                currentUserQuery={currentUserQuery}
+                currentAIResponse={currentAIPlainText}
+                isGenerating={isGenerating}
+                newPrompt={newPrompt}
+                selectedModel={selectedModel}
+                availableModels={AVAILABLE_MODELS}
+                onPromptChange={setNewPrompt}
+                onModelChange={setSelectedModel}
+                onSubmit={handleSubmit}
+              />
 
 
 
-                    <Button
-                      onClick={async () => {
-                        if (webcontainer) {
-                          try {
-                            const files = await webcontainer.fs.readdir('/', { withFileTypes: true })
-                            console.log('Root files:', files)
-                            setTerminalOutput(prev => prev + `\n--- WebContainer Root Directory ---\n${files.map(f => `${f.isDirectory() ? 'DIR' : 'FILE'}: ${f.name}`).join('\n')}\n`)
-                            
-                            // Check specifically for package.json
-                            try {
-                              const packageJson = await webcontainer.fs.readFile('/package.json', 'utf-8')
-                              setTerminalOutput(prev => prev + '\n--- package.json found ---\n')
-                              console.log('package.json content:', packageJson.substring(0, 200) + '...')
-                            } catch (err) {
-                              setTerminalOutput(prev => prev + '\n--- package.json NOT found ---\n')
-                              console.log('package.json error:', err)
-                            }
-                          } catch (err) {
-                            console.error('Failed to read directory:', err)
-                            setTerminalOutput(prev => prev + `\nError reading directory: ${err}\n`)
-                          }
-                        }
-                      }}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      Debug Files
-                    </Button>
-
-                    <Button
-                      onClick={() => {
-                        console.log('Current project data:', project)
-                        console.log('Project files content:', projectFiles.substring(0, 1000))
-                        console.log('Parsed files for mounting:', parsedFiles)
-                        setTerminalOutput(prev => prev + `\n--- Current Project Info ---\n`)
-                        setTerminalOutput(prev => prev + `Project ID: ${project?.id}\n`)
-                        setTerminalOutput(prev => prev + `Project files length: ${projectFiles.length}\n`)
-                        setTerminalOutput(prev => prev + `Parsed files count: ${parsedFiles.length}\n`)
-                        setTerminalOutput(prev => prev + `Parsed files: ${parsedFiles.map(f => f.path).join(', ')}\n`)
-                        setTerminalOutput(prev => prev + `Has existing files: ${!!existingFiles}\n`)
-                        setTerminalOutput(prev => prev + `Files content preview: ${projectFiles.substring(0, 500)}...\n`)
-                      }}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      Debug Project
-                    </Button>
-                  </div>
-
-                  {/* Terminal actions */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Terminal className="h-4 w-4" />
-                      <h4 className="text-sm font-medium">Terminal Actions</h4>
-                      <Button
-                        onClick={() => setTerminalOutput('')}
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Terminal output is shown in the main content area when available.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             {/* Right Column: Code Editor or Preview */}
@@ -1209,22 +969,165 @@ export default function ProjectPage(): JSX.Element {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                                              <Button
-                          onClick={() => setView('code')}
-                          variant={view === 'code' ? 'default' : 'outline'}
-                          size="sm"
-                        >
-                          Code
-                        </Button>
-                        <Button
-                          onClick={() => setView('preview')}
-                          variant={view === 'preview' ? 'default' : 'outline'}
-                          size="sm"
-                          disabled={!previewUrl}
-                        >
-                          Preview
-                        </Button>
-                      </div>
+                      <Button
+                        onClick={() => setView('code')}
+                        variant={view === 'code' ? 'default' : 'outline'}
+                        size="sm"
+                      >
+                        Code
+                      </Button>
+                      <Button
+                        onClick={() => setView('preview')}
+                        variant={view === 'preview' ? 'default' : 'outline'}
+                        size="sm"
+                        disabled={!previewUrl}
+                      >
+                        Preview
+                      </Button>
+                      
+                      {/* Separator */}
+                      <div className="w-px h-6 bg-border mx-1"></div>
+                      
+                      {/* Runtime Controls */}
+                      <Button
+                        onClick={async () => {
+                          if (!webcontainer || !containerReady) return
+                          
+                          try {
+                            // Kill any running processes first
+                            if (currentProcess) {
+                              currentProcess.kill()
+                              setCurrentProcess(null)
+                              setTerminalOutput(prev => prev + '\n🛑 Stopped previous process\n')
+                            }
+                            
+                            setTerminalOutput(prev => prev + '\n--- Installing dependencies with pnpm ---\n')
+                            const pnpmInstall = await webcontainer.spawn('pnpm', [
+                              'install', 
+                              '--no-frozen-lockfile',
+                              '--registry=https://registry.npmjs.org/',
+                              '--fetch-timeout=300000',
+                              '--fetch-retries=3'
+                            ])
+                            
+                            pnpmInstall.output.pipeTo(new WritableStream({
+                              write(data) {
+                                const cleanData = cleanAnsiCodes(data)
+                                setTerminalOutput(prev => prev + cleanData)
+                              }
+                            })).catch(console.error)
+                            
+                            const exitCode = await pnpmInstall.exit
+                            if (exitCode === 0) {
+                              setTerminalOutput(prev => prev + '\n✅ Installation completed! Starting dev server...\n')
+                              
+                              // Start dev server automatically after installation
+                              try {
+                                const devServer = await webcontainer.spawn('pnpm', ['dev'])
+                                setCurrentProcess(devServer)
+                                setIsRunning(true)
+                                
+                                devServer.output.pipeTo(new WritableStream({
+                                  write(data) {
+                                    const cleanData = cleanAnsiCodes(data)
+                                    setTerminalOutput(prev => prev + cleanData)
+                                  }
+                                })).catch(console.error)
+                                
+                                // Wait for the server to be ready
+                                webcontainer.on('server-ready', (port, url) => {
+                                  setPreviewUrl(url)
+                                  setTerminalOutput(prev => prev + `\n🌐 Development server ready at: ${url}\n`)
+                                })
+                                
+                              } catch (devError) {
+                                setTerminalOutput(prev => prev + `\n❌ Failed to start dev server: ${devError}\n`)
+                                setIsRunning(false)
+                              }
+                            } else {
+                              setTerminalOutput(prev => prev + `\n❌ Installation failed with exit code ${exitCode}\n`)
+                            }
+                          } catch (err) {
+                            setTerminalOutput(prev => prev + `\n❌ Error: ${err}\n`)
+                            setIsRunning(false)
+                          }
+                        }}
+                        disabled={!containerReady || isRunning}
+                        variant="default"
+                        size="sm"
+                      >
+                        {isRunning ? (
+                          <>
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            Running...
+                          </>
+                        ) : (
+                          <>
+                            <Play className="mr-2 h-3 w-3" />
+                            Start
+                          </>
+                        )}
+                      </Button>
+
+                      <Button
+                        onClick={async () => {
+                          try {
+                            setTerminalOutput(prev => prev + '\n🛑 Stopping all processes...\n')
+                            
+                            // Use the proper stop function with timeout
+                            const stopPromise = stopDevServer()
+                            const timeoutPromise = new Promise((_, reject) => 
+                              setTimeout(() => reject(new Error('Stop timeout')), 5000)
+                            )
+                            
+                            try {
+                              await Promise.race([stopPromise, timeoutPromise])
+                            } catch (timeoutError) {
+                              setTerminalOutput(prev => prev + '\n⚠️ Stop timeout, forcing shutdown...\n')
+                            }
+                            
+                            // Force cleanup regardless of stop function result
+                            if (currentProcess) {
+                              try {
+                                currentProcess.kill()
+                              } catch (killError) {
+                                console.log('Process already killed or error killing:', killError)
+                              }
+                            }
+                            
+                            // Reset all states immediately
+                            setIsRunning(false)
+                            setCurrentProcess(null)
+                            setPreviewUrl('')
+                            
+                            setTerminalOutput(prev => prev + '\n✅ All processes stopped\n')
+                            
+                          } catch (err) {
+                            console.error('Error stopping processes:', err)
+                            setTerminalOutput(prev => prev + `\n❌ Error stopping: ${err}\n`)
+                            
+                            // Force stop anyway - this should always work
+                            setIsRunning(false)
+                            setCurrentProcess(null)
+                            setPreviewUrl('')
+                            setTerminalOutput(prev => prev + '\n🔨 Force stopped all processes\n')
+                          }
+                        }}
+                        disabled={!isRunning}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        <Square className="mr-2 h-3 w-3" />
+                        Stop
+                      </Button>
+                      
+                      {/* WebContainer Status */}
+                      {containerReady && (
+                        <Badge variant={containerReady ? "secondary" : "outline"} className="ml-2">
+                          WebContainer Ready
+                        </Badge>
+                      )}
+                    </div>
                     {isGenerating && (
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin text-primary" />

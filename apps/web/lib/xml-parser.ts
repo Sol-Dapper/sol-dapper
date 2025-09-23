@@ -51,6 +51,14 @@ export class AIResponseParser {
   }
 
   /**
+   * Extract just plain text from a streaming response, removing XML and code blocks
+   * This is optimized for real-time streaming where XML might be incomplete
+   */
+  extractStreamingPlainText(response: string): string {
+    return this.extractPlainTextForStreaming(response);
+  }
+
+  /**
    * Parse AI response text that may contain XML tags for files, code, etc.
    */
   parseResponse(response: string, isStreaming: boolean = false): ParsedResponse {
@@ -74,8 +82,13 @@ export class AIResponseParser {
     result.codeBlocks.push(...this.extractCodeBlocks(response));
 
     // Extract plain text (remove XML and code blocks)
-    const xmlBlocks = this.extractXMLBlocks(response);
-    result.text = this.extractPlainText(response, xmlBlocks);
+    if (isStreaming) {
+      // Use streaming-optimized plain text extraction
+      result.text = this.extractPlainTextForStreaming(response);
+    } else {
+      const xmlBlocks = this.extractXMLBlocks(response);
+      result.text = this.extractPlainText(response, xmlBlocks);
+    }
 
     // Also parse as steps for the Builder component
     result.steps = parseForgeXml(response);
@@ -776,6 +789,47 @@ export class AIResponseParser {
     plainText = plainText.replace(/```[\s\S]*?```/g, '');
 
     return plainText.trim();
+  }
+
+  /**
+   * Extract plain text for streaming responses - more aggressive XML removal
+   * This handles incomplete XML tags and streaming content
+   */
+  private extractPlainTextForStreaming(text: string): string {
+    let plainText = text;
+
+    // Remove complete forgeArtifact blocks first
+    plainText = plainText.replace(/<forgeArtifact[\s\S]*?<\/forgeArtifact>/gi, '');
+    
+    // Remove incomplete forgeArtifact blocks (for streaming) - be more aggressive
+    plainText = plainText.replace(/<forgeArtifact[\s\S]*$/gi, '');
+    
+    // Remove any forgeAction blocks (complete and incomplete)
+    plainText = plainText.replace(/<forgeAction[\s\S]*?<\/forgeAction>/gi, '');
+    plainText = plainText.replace(/<forgeAction[\s\S]*$/gi, '');
+    
+    // Remove any remaining XML-like tags (complete and incomplete)
+    plainText = plainText.replace(/<[^>]*>/g, ''); // Complete tags
+    plainText = plainText.replace(/<[^>]*$/g, ''); // Incomplete tags at the end
+    
+    // Remove HTML-encoded XML (complete and incomplete)
+    plainText = plainText.replace(/&lt;[^&]*&gt;/g, '');
+    plainText = plainText.replace(/&lt;[^&]*$/g, '');
+    
+    // Remove markdown code blocks (complete and incomplete)
+    plainText = plainText.replace(/```[\s\S]*?```/g, '');
+    plainText = plainText.replace(/```[\s\S]*$/g, ''); // Incomplete code blocks at the end
+    
+    // Remove any XML attributes that might have leaked through
+    plainText = plainText.replace(/\s+(id|type|filePath|command)=["'][^"']*["']/gi, '');
+    
+    // Clean up extra whitespace and formatting
+    plainText = plainText.replace(/\n\s*\n\s*\n/g, '\n\n'); // Multiple line breaks
+    plainText = plainText.replace(/^\s+|\s+$/g, ''); // Leading/trailing whitespace
+    plainText = plainText.replace(/\s+\n/g, '\n'); // Trailing spaces before newlines
+    plainText = plainText.replace(/\n\s+/g, '\n'); // Leading spaces after newlines
+    
+    return plainText;
   }
 
   /**
