@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { ChevronDown, LogOut, Wallet, Mail, Shield, Menu, Zap } from "lucide-react"
+import { ChevronDown, LogOut, Wallet, Mail, Shield, Menu, Zap, Copy, Check } from "lucide-react"
 import Link from "next/link"
 import { ThemeToggle } from "./theme-toggle"
 
@@ -33,6 +33,20 @@ interface NavigationProps {
 
 export function Navigation({ user, onLogout }: NavigationProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [isCopied, setIsCopied] = useState(false)
+
+  const copyAddress = async (address: string) => {
+    try {
+      await navigator.clipboard.writeText(address)
+      setIsCopied(true)
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setIsCopied(false)
+      }, 2000)
+    } catch (err) {
+      console.error('Failed to copy address:', err)
+    }
+  }
 
   const getInitials = (email?: string, walletAddress?: string): string => {
     if (email && email !== `wallet-user-${walletAddress?.substring(0, 8)}@example.com`) {
@@ -94,52 +108,29 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-80" align="end" forceMount>
-                <DropdownMenuLabel className="p-4">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarFallback className="bg-primary text-primary-foreground text-base font-semibold">
-                        {getInitials(user?.email?.address, user?.wallet?.address)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-1">
-                      <p className="font-semibold text-lg">{getDisplayName()}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        {user?.wallet?.address ? (
-                          <>
-                            <Wallet className="h-4 w-4" />
-                            <span>Wallet Connected</span>
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="h-4 w-4" />
-                            <span>Email User</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </DropdownMenuLabel>
-                
+              <DropdownMenuContent className="w-56" align="end" forceMount>
                 {user?.wallet?.address && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <div className="p-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <Shield className="h-4 w-4 text-muted-foreground" />
-                        <p className="font-medium text-muted-foreground">Wallet Address</p>
-                      </div>
-                      <div className="font-mono text-sm text-foreground break-all bg-muted/30 rounded-xl p-3 border">
-                        {user.wallet.address}
-                      </div>
-                    </div>
-                  </>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault()
+                      copyAddress(user.wallet!.address)
+                    }}
+                    className="cursor-pointer  h-7"
+                  >
+                    {isCopied ? (
+                      <Check className="mr-3 h-1 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="mr-3 h-4 w-4" />
+                    )}
+                    {isCopied ? 'Copied!' : 'Copy Address'}
+                  </DropdownMenuItem>
                 )}
                 
-                <DropdownMenuSeparator />
+                {user?.wallet?.address && <DropdownMenuSeparator />}
+                
                 <DropdownMenuItem
                   onClick={onLogout}
-                  className="cursor-pointer text-destructive focus:text-destructive m-1 rounded-xl h-11"
+                  className="cursor-pointer text-destructive focus:text-destructive h-7"
                 >
                   <LogOut className="mr-3 h-5 w-5" />
                   Sign Out
@@ -175,40 +166,19 @@ export function Navigation({ user, onLogout }: NavigationProps) {
                     <ThemeToggle />
                   </div>
                   
-                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 border">
-                    <Avatar className="h-12 w-12">
-                      <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                        {getInitials(user?.email?.address, user?.wallet?.address)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-1">
-                      <p className="font-semibold">{getDisplayName()}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        {user?.wallet?.address ? (
-                          <>
-                            <Wallet className="h-4 w-4" />
-                            <span>Wallet Connected</span>
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="h-4 w-4" />
-                            <span>Email User</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
                   {user?.wallet?.address && (
-                    <div className="rounded-2xl border bg-muted/20 p-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <Shield className="h-4 w-4 text-muted-foreground" />
-                        <p className="font-medium text-muted-foreground">Wallet Address</p>
-                      </div>
-                      <div className="font-mono text-sm text-foreground break-all bg-background/50 rounded-xl p-3 border">
-                        {user.wallet.address}
-                      </div>
-                    </div>
+                    <Button
+                      onClick={() => copyAddress(user.wallet!.address)}
+                      variant="ghost"
+                      className="w-full justify-start h-12 rounded-xl"
+                    >
+                      {isCopied ? (
+                        <Check className="mr-3 h-5 w-5 text-green-500" />
+                      ) : (
+                        <Copy className="mr-3 h-5 w-5" />
+                      )}
+                      {isCopied ? 'Copied!' : 'Copy Address'}
+                    </Button>
                   )}
 
                   <Button
