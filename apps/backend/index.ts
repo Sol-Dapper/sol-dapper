@@ -148,6 +148,9 @@ app.get("/api/projects", authMiddleware, async (req, res) => {
     where: {
       userId: user.id,
     },
+    orderBy: {
+      createdAt: "desc",
+    },
   });
   res.json(projects);
 });
