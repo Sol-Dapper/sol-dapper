@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { User, Bot, Clock, Send, Loader2 } from 'lucide-react'
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
 import { AIResponseParser } from '@/lib/xml-parser'
 
 interface Prompt {
@@ -233,9 +234,21 @@ export function ChatInterface({
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted border border-border'
                     }`}>
-                      <div className="text-xs leading-relaxed whitespace-pre-wrap break-words">
-                        {message.content || (message.isStreaming ? 'Thinking...' : 'No content')}
-                      </div>
+                      {message.type === 'USER' ? (
+                        <div className="text-xs leading-relaxed whitespace-pre-wrap break-words">
+                          {message.content || 'No content'}
+                        </div>
+                      ) : (
+                        <div className="break-words">
+                          {message.content ? (
+                            <MarkdownRenderer content={message.content} />
+                          ) : message.isStreaming ? (
+                            <div className="text-xs text-muted-foreground">Thinking...</div>
+                          ) : (
+                            <div className="text-xs text-muted-foreground">No content</div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

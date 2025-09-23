@@ -4,6 +4,7 @@ import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
 import { User, Bot, Clock } from 'lucide-react'
 import { AIResponseParser } from '@/lib/xml-parser'
 
@@ -176,9 +177,21 @@ export function ConversationHistory({
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted border border-border'
                     }`}>
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                        {message.content || (message.isStreaming ? 'Thinking...' : 'No content')}
-                      </div>
+                      {message.type === 'USER' ? (
+                        <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                          {message.content || 'No content'}
+                        </div>
+                      ) : (
+                        <div className="break-words">
+                          {message.content ? (
+                            <MarkdownRenderer content={message.content} />
+                          ) : message.isStreaming ? (
+                            <div className="text-sm text-muted-foreground">Thinking...</div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">No content</div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

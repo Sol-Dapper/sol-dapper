@@ -775,7 +775,7 @@ export class AIResponseParser {
   }
 
   /**
-   * Extract plain text by removing XML and code blocks
+   * Extract plain text by removing XML artifacts but preserving markdown formatting
    */
   private extractPlainText(text: string, xmlBlocks: { type: string; content: string }[]): string {
     let plainText = text;
@@ -785,14 +785,24 @@ export class AIResponseParser {
       plainText = plainText.replace(block.content, '');
     });
 
-    // Remove code blocks
-    plainText = plainText.replace(/```[\s\S]*?```/g, '');
+    // Remove forgeArtifact and forgeAction blocks but preserve other markdown
+    plainText = plainText.replace(/<forgeArtifact[\s\S]*?<\/forgeArtifact>/gi, '');
+    plainText = plainText.replace(/<forgeAction[\s\S]*?<\/forgeAction>/gi, '');
+    plainText = plainText.replace(/&lt;forgeArtifact[\s\S]*?&lt;\/forgeArtifact&gt;/gi, '');
+    plainText = plainText.replace(/&lt;forgeAction[\s\S]*?&lt;\/forgeAction&gt;/gi, '');
 
-    return plainText.trim();
+    // Remove any remaining XML attributes that might have leaked through
+    plainText = plainText.replace(/\s+(id|type|filePath|command)=["'][^"']*["']/gi, '');
+
+    // Clean up extra whitespace but preserve markdown formatting
+    plainText = plainText.replace(/\n\s*\n\s*\n/g, '\n\n'); // Multiple line breaks
+    plainText = plainText.trim();
+
+    return plainText;
   }
 
   /**
-   * Extract plain text for streaming responses - more aggressive XML removal
+   * Extract plain text for streaming responses - remove XML artifacts but preserve markdown
    * This handles incomplete XML tags and streaming content
    */
   private extractPlainTextForStreaming(text: string): string {
@@ -801,33 +811,25 @@ export class AIResponseParser {
     // Remove complete forgeArtifact blocks first
     plainText = plainText.replace(/<forgeArtifact[\s\S]*?<\/forgeArtifact>/gi, '');
     
-    // Remove incomplete forgeArtifact blocks (for streaming) - be more aggressive
+    // Remove incomplete forgeArtifact blocks (for streaming)
     plainText = plainText.replace(/<forgeArtifact[\s\S]*$/gi, '');
     
     // Remove any forgeAction blocks (complete and incomplete)
     plainText = plainText.replace(/<forgeAction[\s\S]*?<\/forgeAction>/gi, '');
     plainText = plainText.replace(/<forgeAction[\s\S]*$/gi, '');
     
-    // Remove any remaining XML-like tags (complete and incomplete)
-    plainText = plainText.replace(/<[^>]*>/g, ''); // Complete tags
-    plainText = plainText.replace(/<[^>]*$/g, ''); // Incomplete tags at the end
-    
     // Remove HTML-encoded XML (complete and incomplete)
-    plainText = plainText.replace(/&lt;[^&]*&gt;/g, '');
-    plainText = plainText.replace(/&lt;[^&]*$/g, '');
-    
-    // Remove markdown code blocks (complete and incomplete)
-    plainText = plainText.replace(/```[\s\S]*?```/g, '');
-    plainText = plainText.replace(/```[\s\S]*$/g, ''); // Incomplete code blocks at the end
+    plainText = plainText.replace(/&lt;forgeArtifact[\s\S]*?&lt;\/forgeArtifact&gt;/gi, '');
+    plainText = plainText.replace(/&lt;forgeArtifact[\s\S]*$/gi, '');
+    plainText = plainText.replace(/&lt;forgeAction[\s\S]*?&lt;\/forgeAction&gt;/gi, '');
+    plainText = plainText.replace(/&lt;forgeAction[\s\S]*$/gi, '');
     
     // Remove any XML attributes that might have leaked through
     plainText = plainText.replace(/\s+(id|type|filePath|command)=["'][^"']*["']/gi, '');
     
-    // Clean up extra whitespace and formatting
+    // Clean up extra whitespace but preserve markdown formatting
     plainText = plainText.replace(/\n\s*\n\s*\n/g, '\n\n'); // Multiple line breaks
-    plainText = plainText.replace(/^\s+|\s+$/g, ''); // Leading/trailing whitespace
-    plainText = plainText.replace(/\s+\n/g, '\n'); // Trailing spaces before newlines
-    plainText = plainText.replace(/\n\s+/g, '\n'); // Leading spaces after newlines
+    plainText = plainText.trim();
     
     return plainText;
   }
