@@ -525,14 +525,6 @@ Generated on: ${new Date().toISOString()}
             <Badge variant="secondary" className="text-xs">
               {parsedResponse.files.length} files
             </Badge>
-            {isStreaming && parsedResponse.files.some(file => !isBoilerplateFile(file.path)) && (
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                  Generating...
-                </span>
-              </div>
-            )}
             {shouldUpdateWebContainer && viewMode === 'runtime' && (
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse"></div>
@@ -580,7 +572,7 @@ Generated on: ${new Date().toISOString()}
           {viewMode === 'code' || disableRuntime ? (
             <div className="flex gap-1">
               {/* File Tree */}
-              <Card style={{width: `${fileTreeWidth}px`}} className="flex-shrink-0 h-[585px]  overflow-hidden flex flex-col">
+              <Card style={{width: `${fileTreeWidth}px`}} className="flex-shrink-0 h-[785px]  overflow-hidden flex flex-col">
                 <CardHeader className="flex-shrink-0 pb-3">
                   <CardTitle className="text-base">File Explorer</CardTitle>
                 </CardHeader>
@@ -643,7 +635,7 @@ Generated on: ${new Date().toISOString()}
                       code={streamingFileContent || selectedFile.content}
                       language={selectedFile.language}
                       filename={selectedFile.name}
-                      height={529}
+                      height={727}
                       readonly={true} // Make it readonly
                       isStreaming={isStreaming && !isBoilerplateFile(selectedFile.path)}
                       streamingSpeed={10} // Characters per interval

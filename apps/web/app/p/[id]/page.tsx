@@ -97,7 +97,31 @@ export default function ProjectPage(): JSX.Element {
   const [terminalHeight, setTerminalHeight] = useState<number>(200)
   const [fileTreeWidth, setFileTreeWidth] = useState<number>(220)
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const terminalRef = useRef<HTMLPreElement>(null)
+  const terminalRef = useRef<HTMLDivElement>(null);
+
+  
+  // Auto-scroll terminal to bottom when content changes
+  useEffect(() => {
+    if (terminalRef.current) {
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        if (terminalRef.current) {
+          terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [terminalOutput]);
+
+  // Scroll to bottom when terminal is first shown or when it's un-minimized
+  useEffect(() => {
+    if (terminalOutput && !isTerminalMinimized && terminalRef.current) {
+      requestAnimationFrame(() => {
+        if (terminalRef.current) {
+          terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [terminalOutput, isTerminalMinimized]);
   
   const parser = useMemo(() => new AIResponseParser(), [])
 
@@ -876,7 +900,7 @@ export default function ProjectPage(): JSX.Element {
 
             {/* Right Column: Code Editor or Preview */}
             <div className="flex min-h-0 flex-col h-full">
-              <Card className="min-h-0 h-full py-2 border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm flex flex-col">
+              <Card className="min-h-0 h-full pt-2 pb-[0.5px] border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm flex flex-col">
                 <CardHeader className="pb-1 flex-shrink-0">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -1111,7 +1135,7 @@ export default function ProjectPage(): JSX.Element {
                   
                   {/* Terminal Section */}
                   {terminalOutput && (
-                    <div className="border-t border-border/50 bg-black/95 text-green-300 flex-shrink-0">
+                    <div className="rounded-b-xl bg-black/95 text-green-300 flex-shrink-0">
                       {/* Terminal Resize Handle */}
                       <div 
                         className="h-1 bg-border/30 hover:bg-border cursor-row-resize flex items-center justify-center group"
@@ -1138,15 +1162,15 @@ export default function ProjectPage(): JSX.Element {
                       </div>
                       
                       <div 
-                        className="h-full flex flex-col" 
+                        className="h-full mb-3 flex flex-col" 
                         style={{ height: isTerminalMinimized ? '32px' : `${terminalHeight}px` }}
                       >
-                        <div className="flex items-center justify-between px-4 py-2 bg-black/50 border-b border-border/30">
+                        <div className="flex items-center justify-between px-4 py-2 bg-black rounded-lg border-white/10 border-b border-border/30">
                           <div className="flex items-center gap-2">
                             {/* <div className="w-3 h-3 rounded-full bg-red-500"></div>
                             <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
                             <div className="w-3 h-3 rounded-full bg-green-500"></div> */}
-                            <span className="text-xs text-muted-foreground ml-2">Terminal</span>
+                            <span className="text-xs font-semibold text-white ml-2">Terminal</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Button
@@ -1161,12 +1185,15 @@ export default function ProjectPage(): JSX.Element {
                           </div>
                         </div>
                         {!isTerminalMinimized && (
-                          <div className="flex-1 overflow-auto">
+                          <div
+                            ref={terminalRef} 
+                            className="flex-1 overflow-auto p-4"
+                          >
                             <pre 
-                              ref={terminalRef}
-                              className="text-xs font-mono p-4 whitespace-pre-wrap break-words h-full overflow-auto"
+                              className="text-xs font-mono whitespace-pre-wrap break-words"
                             >
                               {terminalOutput}
+                              <span className="animate-pulse">▋</span>
                             </pre>
                           </div>
                         )}
