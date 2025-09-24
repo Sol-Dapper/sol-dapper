@@ -881,6 +881,7 @@ export default function ProjectPage(): JSX.Element {
                 newPrompt={newPrompt}
                 selectedModel={selectedModel}
                 availableModels={AVAILABLE_MODELS}
+                projectDescription={project?.description}
                 onPromptChange={setNewPrompt}
                 onModelChange={setSelectedModel}
                 onSubmit={handleSubmit}

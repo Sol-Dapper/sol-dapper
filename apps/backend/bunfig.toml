@@ -1,6 +1,0 @@
-[install]
-workspaces = true
-
-[install.scopes]
-# Enable workspace protocol for local packages
-"@" = "workspace:*"

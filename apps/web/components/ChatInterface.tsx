@@ -34,6 +34,7 @@ interface ChatInterfaceProps {
   newPrompt: string
   selectedModel: string
   availableModels: readonly { value: string; label: string }[]
+  projectDescription?: string
   onPromptChange: (value: string) => void
   onModelChange: (value: string) => void
   onSubmit: () => void
@@ -47,6 +48,7 @@ export function ChatInterface({
   newPrompt,
   selectedModel,
   availableModels,
+  projectDescription,
   onPromptChange,
   onModelChange,
   onSubmit
@@ -157,9 +159,8 @@ export function ChatInterface({
   return (
     <Card className="border border-border/50 shadow-lg gap-0 bg-card/50 backdrop-blur-sm flex flex-col h-full">
       <CardHeader className="pb-3 flex-shrink-0">
-        <CardTitle className="text-lg mb-1 flex items-center gap-2">
-          <Bot className="h-4 w-4" />
-          Chat with AI Assistant
+        <CardTitle className="text-xl mb-1 flex items-center gap-2">
+          {projectDescription || 'Chat with AI Assistant'}
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           {messages.length === 0 ? 'Start a conversation to build your project' : `${messages.length} messages`}
