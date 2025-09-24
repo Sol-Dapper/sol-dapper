@@ -1,6 +1,7 @@
 "use client"
 
 import { usePrivy } from "@privy-io/react-auth"
+import { useCreateWallet } from "@privy-io/react-auth"
 import { Card } from "../components/ui/card"
 import { Navigation } from "../components/navigation"
 import { ProjectsSidebar } from "../components/ProjectsSidebar"
@@ -36,6 +37,14 @@ const AVAILABLE_MODELS = [
 
 export default function Home(): JSX.Element {
   const { login, authenticated, user, logout, ready, getAccessToken } = usePrivy()
+  const { createWallet } = useCreateWallet({
+    onSuccess: ({ wallet }) => {
+      console.log('Solana wallet created successfully:', wallet.address)
+    },
+    onError: (error) => {
+      console.error('Failed to create Solana wallet:', error)
+    }
+  })
   const { setTheme } = useTheme()
   const router = useRouter()
   const [isRegistering, setIsRegistering] = useState(false)
@@ -51,26 +60,71 @@ export default function Home(): JSX.Element {
   const [projects, setProjects] = useState<ProjectWithStatus[]>([])
   const [isLoadingProjects, setIsLoadingProjects] = useState<boolean>(false)
 
+  // Add a flag to prevent multiple registration attempts
+  const [hasAttemptedRegistration, setHasAttemptedRegistration] = useState(false)
+
   const handleRegistration = useCallback(async () => {
-    if (!user?.id) return
+    if (!user?.id || hasAttemptedRegistration) return
+    setHasAttemptedRegistration(true)
     setIsRegistering(true)
     setRegistrationError(null)
     try {
+      // Log the complete Privy user object
+      console.log("=== PRIVY USER OBJECT ===")
+      console.log(user)
+      console.log("=========================")
+      
+      // Extract email from different login methods
+      let email = ""
+      if (user.email?.address) {
+        // Email/OTP login
+        email = user.email.address
+      } else if (user.google?.email) {
+        // Google login
+        email = user.google.email
+      } else if (user.github?.email) {
+        // GitHub login
+        email = user.github.email
+      }
+      
+      // Check if user has a wallet, if not create one
+      let walletAddress = user.wallet?.address
+      if (!walletAddress) {
+        console.log("No wallet found, creating Solana wallet...")
+        try {
+          const wallet = await createWallet()
+          walletAddress = wallet.address
+          console.log("Wallet created:", walletAddress)
+        } catch (error) {
+          console.error("Failed to create wallet:", error)
+          // Continue with registration even if wallet creation fails
+        }
+      }
+      
       const userData = {
         privyUserId: user.id,
-        email: user.email?.address || "",
-        walletAddress: user.wallet?.address || undefined,
+        email: email,
+        walletAddress: walletAddress,
       }
-      if (!userData.email && userData.walletAddress) {
-        userData.email = `wallet-user-${userData.walletAddress.substring(0, 8)}@example.com`
+      
+      // Handle missing or empty email - generate fallback for any case where email is missing
+      if (!userData.email || userData.email.trim() === "") {
+        if (userData.walletAddress) {
+          userData.email = `wallet-user-${userData.walletAddress.substring(0, 8)}@example.com`
+        } else {
+          // Fallback for users without email or wallet
+          userData.email = `user-${user.id.substring(user.id.length - 8)}@example.com`
+        }
       }
+      
+      console.log("Final userData:", userData)
       await registerUser(userData)
     } catch (error) {
       setRegistrationError(error instanceof Error ? error.message : "Registration failed")
     } finally {
       setIsRegistering(false)
     }
-  }, [user])
+  }, [user, createWallet, hasAttemptedRegistration])
 
   const loadProjects = useCallback(async (): Promise<void> => {
     if (!authenticated) return
@@ -111,17 +165,19 @@ export default function Home(): JSX.Element {
     setTheme("dark")
   }, [setTheme])
 
+  // Update the useEffect to only run once
   useEffect(() => {
-    if (ready && authenticated && user?.id) {
+    if (ready && authenticated && user?.id && !hasAttemptedRegistration) {
       handleRegistration()
     }
-  }, [ready, authenticated, user, handleRegistration])
+  }, [ready, authenticated, user?.id, hasAttemptedRegistration, handleRegistration])
 
+  // Also fix the loadProjects useEffect
   useEffect(() => {
-    if (authenticated && !isRegistering) {
+    if (authenticated && !isRegistering && !hasAttemptedRegistration) {
       loadProjects()
     }
-  }, [authenticated, isRegistering, loadProjects])
+  }, [authenticated, isRegistering, hasAttemptedRegistration, loadProjects])
 
   const handleCreateProject = async (): Promise<void> => {
     if (!prompt.trim() || isCreating) return
