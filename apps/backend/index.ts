@@ -7,9 +7,13 @@ import { SYSTEM_PROMPT, BASE_PROMPT_REACT } from "./prompts/prompt";
 import { boilerplateComponents } from "./prompts/boilerplate-components";
 import { generateText, streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { anthropic } from "@ai-sdk/anthropic";
+// import { anthropic } from "@ai-sdk/anthropic";
+import Anthropic from '@anthropic-ai/sdk';
 
 const PORT = process.env.PORT || 3001;
+const anthropic = new Anthropic({ 
+  apiKey: process.env.ANTHROPIC_API_KEY 
+});
 
 /**
  * Analyze AI response to extract useful metrics for debugging and monitoring
@@ -66,7 +70,7 @@ app.use((req, res, next) => {
 
 // Configure CORS for streaming and cross-origin requests
 app.use(cors({
-  origin: "https://dapper-web.vercel.app",
+  origin: "*",
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
@@ -256,10 +260,9 @@ app.get("/api/project/:id", authMiddleware, async (req, res) => {
 });
 
 app.post("/api/chat", authMiddleware, async (req, res) => {
-  const { prompt: userPrompt, projectId, model = "gpt-4o" } = req.body;
+  const { prompt: userPrompt, projectId, model = "claude-3-7-sonnet-20250219" } = req.body;
   const privyUserId = req.privyUserId!;
   const requestId = `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
   
   try {
     // Validate inputs
@@ -286,7 +289,6 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-
     // Get project and verify ownership
     let project;
     try {
@@ -306,65 +308,40 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
     }
 
     if (!project) {
-      return res
-        .status(404)
-        .json({ error: "Project not found or access denied" });
+      return res.status(404).json({ error: "Project not found or access denied" });
     }
 
-
     // Build conversation history from previous prompts
-    let conversationHistory: Array<{ role: "user" | "assistant"; content: string }>;
+    let conversationHistory;
     try {
       conversationHistory = project.prompts.map((p) => ({
-        role: p.type === "USER" ? "user" as const : "assistant" as const,
+        role: p.type === "USER" ? "user" : "assistant",
         content: p.content,
       }));
     } catch (mappingError) {
       return res.status(500).json({ error: "Error processing conversation history" });
     }
 
-    // Determine which AI provider to use based on model name
-    let modelProvider;
+    // Prepare messages array for Anthropic API
+    let messages;
+    let systemContent;
     try {
-      if (model.includes("claude")) {
-        modelProvider = anthropic(model);
-      } else {
-        modelProvider = openai(model);
-      }
-    } catch (modelError) {
-      return res.status(500).json({ error: "Error initializing AI model" });
-    }
+      // Combine system prompts into one
+      systemContent = [
+        SYSTEM_PROMPT(),
+        basePrompt,
+        BASE_PROMPT_REACT
+      ].join('\n\n');
 
-    // Prepare messages array
-    let messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
-    try {
       messages = [
-        { role: "system" as const, content: SYSTEM_PROMPT() },
-        { role: "system" as const, content: basePrompt },
-        { role: "system" as const, content: BASE_PROMPT_REACT },
         ...conversationHistory,
-        { role: "user" as const, content: userPrompt },
+        { role: "user", content: userPrompt },
       ];
-      
     } catch (messageError) {
       return res.status(500).json({ error: "Error preparing conversation messages" });
     }
 
-    // Set streaming headers
-    try {
-      res.setHeader("Access-Control-Allow-Origin", "https://dapper-web.vercel.app");
-      res.setHeader("Access-Control-Allow-Credentials", "true");
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
-      res.setHeader("Transfer-Encoding", "chunked");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      
-    } catch (headerError) {
-      return res.status(500).json({ error: "Error setting response headers" });
-    }
-    
-
-    // Save user prompt to database
+    // Save user prompt to database before streaming
     try {
       await prismaClient.prompt.create({
         data: {
@@ -377,65 +354,85 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
       return res.status(500).json({ error: "Database error saving prompt" });
     }
 
-    // Stream the AI response
-    let result;
+    // Set CORS headers for streaming
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    // Initialize Anthropic client (make sure this is imported at the top of your file)
+    // import Anthropic from '@anthropic-ai/sdk';
+    // const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    let fullResponse = '';
+    let inputTokens = 0;
+    let outputTokens = 0;
+
     try {
-      
-      result = await streamText({
-        model: modelProvider,
-        messages,
+      // Create streaming request to Anthropic
+      const stream = await anthropic.messages.create({
+        model: model,
+        max_tokens: 64000,
         temperature: 0.7,
-        maxOutputTokens: 64000,
+        system: systemContent,
+        messages:messages as any,
+        stream: true,
       });
-    } catch (aiError) {
-      
-      if (!res.headersSent) {
-        return res.status(500).json({ error: "AI service error" });
-      } else {
-        res.end();
-        return;
-      }
-    }
 
-    // Ensure result is defined before proceeding
-    if (!result) {
-      if (!res.headersSent) {
-        return res.status(500).json({ error: "AI service initialization failed" });
-      } else {
-        res.end();
-        return;
-      }
-    }
-
-    let fullResponse = "";
-    let streamStartTime = Date.now();
-    let chunkCount = 0;
-
-    // Handle the streaming response properly
-    try {
-      
-      for await (const delta of result.textStream) {
-        if (delta) {
-          try {
-            res.write(delta);
-            fullResponse += delta;
-            chunkCount++;
-            
-          } catch (writeError) {
-            throw writeError;
+      // Handle the stream
+      for await (const chunk of stream) {
+        try {
+          if (chunk.type === 'message_start') {
+            inputTokens = chunk.message?.usage?.input_tokens || 0;
+          } 
+          else if (chunk.type === 'content_block_delta') {
+            if (chunk.delta?.type === 'text_delta') {
+              const textChunk = chunk.delta.text;
+              fullResponse += textChunk;
+              
+              // Write chunk to response stream
+              res.write(textChunk);
+            }
           }
+          else if (chunk.type === 'content_block_start') {
+            // Content block started
+          }
+          else if (chunk.type === 'content_block_stop') {
+            // Content block stopped
+          }
+          else if (chunk.type === 'message_delta') {
+            if (chunk.usage) {
+              outputTokens = chunk.usage.output_tokens || 0;
+            }
+            if (chunk.delta?.stop_reason) {
+              // Stream finished
+            }
+          }
+          else if (chunk.type === 'message_stop') {
+            break;
+          }
+        } catch (chunkError) {
+          continue; // Continue processing other chunks
         }
       }
 
-
+      // End the response stream
       res.end();
 
-      // Save AI response to database after streaming is complete
+      // Analyze the response if needed
+      if (typeof analyzeAIResponse === 'function') {
+        try {
+          const responseAnalysis = analyzeAIResponse(fullResponse);
+        } catch (analysisError) {
+          // Error analyzing response
+        }
+      }
+
+      // Save AI response to database
       if (fullResponse.trim()) {
         try {
-          // Validate and analyze the response before saving
-          const responseAnalysis = analyzeAIResponse(fullResponse);
-          
           await prismaClient.prompt.create({
             data: {
               content: fullResponse,
@@ -443,28 +440,27 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
               projectId: project.id,
             },
           });
-          
         } catch (dbError) {
-          // Don't return error here as the stream was successful
+          // Don't throw here as the stream was successful
         }
-      } else {
       }
 
     } catch (streamError) {
-      
+      // Only send error response if headers haven't been sent yet
       if (!res.headersSent) {
-        res.status(500).json({ error: "Streaming failed" });
+        res.status(500).json({ error: "Failed to stream response from Anthropic" });
       } else {
+        // If streaming already started, end the response
         res.end();
       }
     }
 
   } catch (error) {
-    
     // Only send error response if headers haven't been sent yet
     if (!res.headersSent) {
       res.status(500).json({ error: "Failed to generate response" });
     } else {
+      // If streaming already started, end the response
       res.end();
     }
   }

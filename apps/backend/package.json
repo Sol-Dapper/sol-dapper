@@ -12,6 +12,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.17",
     "@ai-sdk/openai": "^2.0.30",
+    "@anthropic-ai/sdk": "^0.63.1",
     "@prisma/client": "^6.15.0",
     "ai": "^5.0.44",
     "cors": "^2.8.5",
