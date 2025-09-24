@@ -66,7 +66,7 @@ app.use((req, res, next) => {
 
 // Configure CORS for streaming and cross-origin requests
 app.use(cors({
-  origin: true,
+  origin: "https://dapper-web.vercel.app",
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
@@ -74,15 +74,6 @@ app.use(cors({
 }));
 
 app.use(express.json());
-
-// Add explicit OPTIONS handling for chat endpoint
-app.options("/api/chat", (req, res) => {
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
-  res.header("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, Origin, X-Requested-With");
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.status(200).end();
-});
 
 app.post("/api/register", async (req, res) => {
   try {
@@ -357,11 +348,10 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
       res.setHeader("Transfer-Encoding", "chunked");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
-      res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
-      res.setHeader("Access-Control-Allow-Credentials", "true");
     } catch (headerError) {
       return res.status(500).json({ error: "Error setting response headers" });
     }
+    
 
     // Save user prompt to database
     try {
