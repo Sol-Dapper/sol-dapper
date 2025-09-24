@@ -1,58 +1,66 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback, type JSX } from "react"
-import { usePrivy } from "@privy-io/react-auth"
-import { useRouter } from "next/navigation"
-import { Button } from "./ui/button"
-import { Textarea } from "./ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
-import { Separator } from "./ui/separator"
-import { ScrollArea } from "./ui/scroll-area"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
-import { Label } from "./ui/label"
-import { Send, Loader2, AlertCircle } from "lucide-react"
-import Image from "next/image"
-import { ProjectsSidebar } from "./ProjectsSidebar"
-import { AIResponseRenderer } from "./AIResponseRenderer"
-import { API_BASE_URL } from "../lib/api"
+import { useState, useEffect, useCallback, type JSX } from "react";
+import { usePrivy } from "@privy-io/react-auth";
+import { useRouter } from "next/navigation";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Separator } from "./ui/separator";
+import { ScrollArea } from "./ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { Label } from "./ui/label";
+import { Send, Loader2, AlertCircle } from "lucide-react";
+import Image from "next/image";
+import { ProjectsSidebar } from "./ProjectsSidebar";
+import { AIResponseRenderer } from "./AIResponseRenderer";
+import { API_BASE_URL } from "../lib/api";
 
 interface Project {
-  id: string
-  description: string
-  userId: string
-  createdAt: string
-  updatedAt: string
+  id: string;
+  description: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-type ProjectStatus = "creating" | "generating" | "completed" | "error"
+type ProjectStatus = "creating" | "generating" | "completed" | "error";
 
 interface ProjectWithStatus extends Project {
-  status?: ProjectStatus
+  status?: ProjectStatus;
 }
 
 const AVAILABLE_MODELS = [
-  { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet"},
+  { value: "claude-3-7-sonnet-20250219", label: "Claude 3.7 Sonnet" },
   { value: "claude-sonnet-4-20250514", label: "Claude Sonnet 4" },
-] as const
+] as const;
 
 export function PromptInterface(): JSX.Element {
-  const { getAccessToken } = usePrivy()
-  const router = useRouter()
-  const [prompt, setPrompt] = useState<string>("")
-  const [selectedModel, setSelectedModel] = useState<string>("claude-3-7-sonnet-20250219")
-  const [projects, setProjects] = useState<ProjectWithStatus[]>([])
-  const [isGenerating, setIsGenerating] = useState<boolean>(false)
-  const [streamingResponse, setStreamingResponse] = useState<string>("")
-  const [error, setError] = useState<string>("")
-  const [isLoadingProjects, setIsLoadingProjects] = useState<boolean>(false)
+  const { getAccessToken } = usePrivy();
+  const router = useRouter();
+  const [prompt, setPrompt] = useState<string>("");
+  const [selectedModel, setSelectedModel] = useState<string>(
+    "claude-3-7-sonnet-20250219"
+  );
+  const [projects, setProjects] = useState<ProjectWithStatus[]>([]);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [streamingResponse, setStreamingResponse] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const [isLoadingProjects, setIsLoadingProjects] = useState<boolean>(false);
 
   const loadProjects = useCallback(async (): Promise<void> => {
-    setIsLoadingProjects(true)
+    setIsLoadingProjects(true);
     try {
-      const token = await getAccessToken()
+      const token = await getAccessToken();
       if (!token) {
-        setError("Authentication required")
-        return
+        setError("Authentication required");
+        return;
       }
 
       const response = await fetch(`${API_BASE_URL}/api/projects`, {
@@ -60,35 +68,36 @@ export function PromptInterface(): JSX.Element {
           Authorization: token,
           "Content-Type": "application/json",
         },
-      })
+      });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const errorMessage = errorData.error || errorData.message || response.statusText
-        throw new Error(`Failed to load projects: ${errorMessage}`)
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage =
+          errorData.error || errorData.message || response.statusText;
+        throw new Error(`Failed to load projects: ${errorMessage}`);
       }
 
-      const projectsData: Project[] = await response.json()
-      setProjects(projectsData.map((p) => ({ ...p, status: "completed" })))
-      setError("")
+      const projectsData: Project[] = await response.json();
+      setProjects(projectsData.map((p) => ({ ...p, status: "completed" })));
+      setError("");
     } catch (err) {
-      console.error("Error loading projects:", err)
-      setError(err instanceof Error ? err.message : "Failed to load projects")
+      console.error("Error loading projects:", err);
+      setError(err instanceof Error ? err.message : "Failed to load projects");
     } finally {
-      setIsLoadingProjects(false)
+      setIsLoadingProjects(false);
     }
-  }, [getAccessToken])
+  }, [getAccessToken]);
 
   useEffect(() => {
-    loadProjects()
-  }, [loadProjects])
+    loadProjects();
+  }, [loadProjects]);
 
   const handleSubmit = async (): Promise<void> => {
-    if (!prompt.trim() || isGenerating) return
+    if (!prompt.trim() || isGenerating) return;
 
-    setIsGenerating(true)
-    setStreamingResponse("")
-    setError("")
+    setIsGenerating(true);
+    setStreamingResponse("");
+    setError("");
 
     const tempProject: ProjectWithStatus = {
       id: `temp-${Date.now()}`,
@@ -97,17 +106,17 @@ export function PromptInterface(): JSX.Element {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       status: "creating",
-    }
+    };
 
-    setProjects((prev) => [tempProject, ...prev])
+    setProjects((prev) => [tempProject, ...prev]);
 
     try {
-      const token = await getAccessToken()
+      const token = await getAccessToken();
       if (!token) {
-        throw new Error("Authentication required")
+        throw new Error("Authentication required");
       }
 
-      setStreamingResponse("🚀 Initializing project creation...\n\n")
+      setStreamingResponse("🚀 Initializing project creation...\n\n");
 
       const projectResponse = await fetch(`${API_BASE_URL}/api/project`, {
         method: "POST",
@@ -116,21 +125,26 @@ export function PromptInterface(): JSX.Element {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ prompt }),
-      })
+      });
 
       if (!projectResponse.ok) {
-        const errorData = await projectResponse.json().catch(() => ({}))
-        const errorMessage = errorData.error || errorData.message || projectResponse.statusText
-        throw new Error(`Project creation failed: ${errorMessage}`)
+        const errorData = await projectResponse.json().catch(() => ({}));
+        const errorMessage =
+          errorData.error || errorData.message || projectResponse.statusText;
+        throw new Error(`Project creation failed: ${errorMessage}`);
       }
 
-      const projectResult = await projectResponse.json()
-      const projectId = projectResult.project
+      const projectResult = await projectResponse.json();
+      const projectId = projectResult.project;
 
-      setStreamingResponse((prev) => prev + "✅ Project created successfully\n\n")
-      setStreamingResponse((prev) => prev + `📋 Project: ${prompt.split("\n")[0]}\n`)
-      setStreamingResponse((prev) => prev + `🆔 ID: ${projectId}\n\n`)
-      setStreamingResponse((prev) => prev + "🤖 Generating AI response...\n\n")
+      setStreamingResponse(
+        (prev) => prev + "✅ Project created successfully\n\n"
+      );
+      setStreamingResponse(
+        (prev) => prev + `📋 Project: ${prompt.split("\n")[0]}\n`
+      );
+      setStreamingResponse((prev) => prev + `🆔 ID: ${projectId}\n\n`);
+      setStreamingResponse((prev) => prev + "🤖 Generating AI response...\n\n");
 
       setProjects((prev) =>
         prev.map((p) =>
@@ -140,9 +154,9 @@ export function PromptInterface(): JSX.Element {
                 id: projectId,
                 status: "generating" as ProjectStatus,
               }
-            : p,
-        ),
-      )
+            : p
+        )
+      );
 
       const chatResponse = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
@@ -155,61 +169,78 @@ export function PromptInterface(): JSX.Element {
           projectId,
           model: selectedModel,
         }),
-      })
+      });
 
       if (!chatResponse.ok) {
-        const errorData = await chatResponse.json().catch(() => ({}))
-        const errorMessage = errorData.error || errorData.message || chatResponse.statusText
-        throw new Error(`AI generation failed: ${errorMessage}`)
+        const errorData = await chatResponse.json().catch(() => ({}));
+        const errorMessage =
+          errorData.error || errorData.message || chatResponse.statusText;
+        throw new Error(`AI generation failed: ${errorMessage}`);
       }
 
-      const reader = chatResponse.body?.getReader()
-      const decoder = new TextDecoder()
+      const reader = chatResponse.body?.getReader();
+      const decoder = new TextDecoder();
 
       if (!reader) {
-        throw new Error("Response stream unavailable")
+        throw new Error("Response stream unavailable");
       }
 
-      setStreamingResponse("")
+      setStreamingResponse("");
 
       try {
         while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          const chunk = decoder.decode(value, { stream: true })
-          setStreamingResponse((prev) => prev + chunk)
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          setStreamingResponse((prev) => prev + chunk);
         }
       } finally {
-        reader.releaseLock()
+        reader.releaseLock();
       }
 
-      setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, status: "generating" as ProjectStatus } : p)))
-      
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? { ...p, status: "generating" as ProjectStatus }
+            : p
+        )
+      );
+
       // Navigate to the project page with initial prompt and model for seamless continuation
-      setStreamingResponse((prev) => prev + "\n🔄 Redirecting to project page...")
+      setStreamingResponse(
+        (prev) => prev + "\n🔄 Redirecting to project page..."
+      );
       setTimeout(() => {
         // Keep loading state active during navigation
-        router.push(`/p/${projectId}?initialPrompt=${encodeURIComponent(prompt)}&model=${selectedModel}`)
-      }, 500) // Reduced delay since loading continues on project page
-      
+        router.push(
+          `/p/${projectId}?initialPrompt=${encodeURIComponent(prompt)}&model=${selectedModel}`
+        );
+      }, 500); // Reduced delay since loading continues on project page
+
       // Don't set isGenerating to false here - let the navigation handle it
-      return
+      return;
     } catch (err) {
-      console.error("Error in project creation:", err)
-      setError(err instanceof Error ? err.message : "An unexpected error occurred")
-      setStreamingResponse("❌ Generation failed. Please try again.")
-      setProjects((prev) => prev.map((p) => (p.id === tempProject.id ? { ...p, status: "error" as ProjectStatus } : p)))
-      setIsGenerating(false)
+      console.error("Error in project creation:", err);
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      );
+      setStreamingResponse("❌ Generation failed. Please try again.");
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === tempProject.id
+            ? { ...p, status: "error" as ProjectStatus }
+            : p
+        )
+      );
+      setIsGenerating(false);
     }
 
-    setPrompt("")
-  }
-
-
+    setPrompt("");
+  };
 
   return (
     <div className="min-h-[calc(100vh-100px)] bg-background">
-      <ProjectsSidebar 
+      <ProjectsSidebar
         projects={projects}
         isLoadingProjects={isLoadingProjects}
         onLoadProjects={loadProjects}
@@ -222,16 +253,18 @@ export function PromptInterface(): JSX.Element {
               <CardHeader className="pb-6">
                 <div className="flex items-center gap-4">
                   <div className="flex h-12 w-12 items-center justify-center">
-                    <Image 
-                      src="/dapperGithub.jpg" 
-                      alt="Sol-Dapper" 
-                      width={48} 
-                      height={48} 
-                      className="object-cover" 
+                    <Image
+                      src="/dapperGithub.jpg"
+                      alt="Sol-Dapper"
+                      width={48}
+                      height={48}
+                      className="object-cover"
                     />
                   </div>
                   <div>
-                    <CardTitle className="text-2xl mb-2">Create Solana App</CardTitle>
+                    <CardTitle className="text-2xl mb-2">
+                      Create Solana App
+                    </CardTitle>
                     <p className="text-muted-foreground leading-relaxed">
                       Describe your application and AI will generate it for you
                     </p>
@@ -261,19 +294,35 @@ export function PromptInterface(): JSX.Element {
                   <Label htmlFor="model" className="text-base font-medium">
                     AI Model
                   </Label>
-                  <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isGenerating}>
+                  <Select
+                    value={selectedModel}
+                    onValueChange={setSelectedModel}
+                    disabled={isGenerating}
+                  >
                     <SelectTrigger className="w-full border-border/50 h-12">
                       <SelectValue>
                         <div className="flex items-center gap-3">
-                          <span className="font-medium">{AVAILABLE_MODELS.find((m) => m.value === selectedModel)?.label}</span>
+                          <span className="font-medium">
+                            {
+                              AVAILABLE_MODELS.find(
+                                (m) => m.value === selectedModel
+                              )?.label
+                            }
+                          </span>
                         </div>
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {AVAILABLE_MODELS.map((model) => (
-                        <SelectItem key={model.value} value={model.value} className="py-4">
+                        <SelectItem
+                          key={model.value}
+                          value={model.value}
+                          className="py-4"
+                        >
                           <div className="flex flex-col gap-2">
-                            <span className="font-medium text-base">{model.label}</span>
+                            <span className="font-medium text-base">
+                              {model.label}
+                            </span>
                           </div>
                         </SelectItem>
                       ))}
@@ -286,14 +335,18 @@ export function PromptInterface(): JSX.Element {
                     <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
                     <div className="space-y-2">
                       <p className="font-medium text-destructive">Error</p>
-                      <p className="text-sm text-destructive/80 leading-relaxed">{error}</p>
+                      <p className="text-sm text-destructive/80 leading-relaxed">
+                        {error}
+                      </p>
                     </div>
                   </div>
                 )}
 
-                <Button 
-                  onClick={handleSubmit} 
-                  disabled={!prompt.trim() || isGenerating || prompt.length > 2000} 
+                <Button
+                  onClick={handleSubmit}
+                  disabled={
+                    !prompt.trim() || isGenerating || prompt.length > 2000
+                  }
                   className="w-full h-14 text-lg font-medium"
                   size="lg"
                 >
@@ -319,16 +372,18 @@ export function PromptInterface(): JSX.Element {
               <CardHeader className="pb-6">
                 <div className="flex items-center gap-4">
                   <div className="flex h-12 w-12 items-center justify-center">
-                    <Image 
-                      src="/dapperGithub.jpg" 
-                      alt="Sol-Dapper" 
-                      width={48} 
-                      height={48} 
-                      className="object-cover" 
+                    <Image
+                      src="/dapperGithub.jpg"
+                      alt="Sol-Dapper"
+                      width={48}
+                      height={48}
+                      className="object-cover"
                     />
                   </div>
                   <div>
-                    <CardTitle className="text-2xl mb-2">Generation Output</CardTitle>
+                    <CardTitle className="text-2xl mb-2">
+                      Generation Output
+                    </CardTitle>
                     <p className="text-muted-foreground leading-relaxed">
                       Real-time progress and results from AI generation
                     </p>
@@ -340,8 +395,8 @@ export function PromptInterface(): JSX.Element {
                 <ScrollArea className="h-full">
                   <div className="p-8">
                     {streamingResponse ? (
-                      <AIResponseRenderer 
-                        response={streamingResponse} 
+                      <AIResponseRenderer
+                        response={streamingResponse}
                         useBoilerplate={true} // Always use boilerplate for new projects
                         isStreaming={isGenerating}
                         hasExistingProject={false} // Always new projects in PromptInterface
@@ -350,18 +405,22 @@ export function PromptInterface(): JSX.Element {
                       <div className="flex h-[350px] items-center justify-center">
                         <div className="text-center space-y-6">
                           <div className="flex h-20 w-20 items-center justify-center mx-auto">
-                            <Image 
-                              src="/dapperGithub.jpg" 
-                              alt="Sol-Dapper" 
-                              width={80} 
-                              height={80} 
-                              className="object-cover opacity-60" 
+                            <Image
+                              src="/dapperGithub.jpg"
+                              alt="Sol-Dapper"
+                              width={80}
+                              height={80}
+                              className="object-cover opacity-60"
                             />
                           </div>
                           <div className="space-y-3">
-                            <p className="font-semibold text-foreground text-xl">Ready to Generate</p>
+                            <p className="font-semibold text-foreground text-xl">
+                              Ready to Generate
+                            </p>
                             <p className="text-muted-foreground max-w-md leading-relaxed">
-                              Describe your Solana application and watch as AI generates your project in real-time with detailed progress updates
+                              Describe your Solana application and watch as AI
+                              generates your project in real-time with detailed
+                              progress updates
                             </p>
                           </div>
                         </div>
@@ -375,5 +434,5 @@ export function PromptInterface(): JSX.Element {
         </div>
       </div>
     </div>
-  )
+  );
 }

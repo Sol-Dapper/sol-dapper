@@ -1,27 +1,27 @@
-"use client"
+"use client";
 
-import React, { useRef } from 'react'
-import Editor, { Monaco } from '@monaco-editor/react'
-import type { editor } from 'monaco-editor'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Copy, Download } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useTheme } from 'next-themes'
+import React, { useRef } from "react";
+import Editor, { Monaco } from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Copy, Download } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
 
 interface CodeEditorProps {
-  code: string
-  language: string
-  filename?: string
-  readonly?: boolean
-  height?: string | number
-  className?: string
-  showHeader?: boolean
-  showActions?: boolean
-  onChange?: (value: string | undefined) => void
-  isStreaming?: boolean 
-  streamingSpeed?: number 
+  code: string;
+  language: string;
+  filename?: string;
+  readonly?: boolean;
+  height?: string | number;
+  className?: string;
+  showHeader?: boolean;
+  showActions?: boolean;
+  onChange?: (value: string | undefined) => void;
+  isStreaming?: boolean;
+  streamingSpeed?: number;
 }
 
 export function CodeEditor({
@@ -37,177 +37,179 @@ export function CodeEditor({
   isStreaming = false,
   streamingSpeed = 5,
 }: CodeEditorProps) {
-  const { theme, systemTheme } = useTheme()
-  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
-  const [displayedCode, setDisplayedCode] = React.useState('')
-  const [isStreamingActive, setIsStreamingActive] = React.useState(false)
-  const streamingIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const [showTypingCursor, setShowTypingCursor] = React.useState(false)
+  const { theme, systemTheme } = useTheme();
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const [displayedCode, setDisplayedCode] = React.useState("");
+  const [isStreamingActive, setIsStreamingActive] = React.useState(false);
+  const streamingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [showTypingCursor, setShowTypingCursor] = React.useState(false);
 
   // Handle streaming effect
   React.useEffect(() => {
     if (isStreaming && code && code !== displayedCode) {
-      setIsStreamingActive(true)
-      setShowTypingCursor(true)
-      let currentIndex = displayedCode.length
-      
+      setIsStreamingActive(true);
+      setShowTypingCursor(true);
+      let currentIndex = displayedCode.length;
+
       if (streamingIntervalRef.current) {
-        clearInterval(streamingIntervalRef.current)
+        clearInterval(streamingIntervalRef.current);
       }
-      
+
       streamingIntervalRef.current = setInterval(() => {
         if (currentIndex >= code.length) {
-          clearInterval(streamingIntervalRef.current!)
-          streamingIntervalRef.current = null
-          setIsStreamingActive(false)
-          setShowTypingCursor(false)
-          setDisplayedCode(code)
-          return
+          clearInterval(streamingIntervalRef.current!);
+          streamingIntervalRef.current = null;
+          setIsStreamingActive(false);
+          setShowTypingCursor(false);
+          setDisplayedCode(code);
+          return;
         }
-        
-        const nextIndex = Math.min(currentIndex + streamingSpeed, code.length)
-        setDisplayedCode(code.substring(0, nextIndex))
-        currentIndex = nextIndex
-        
+
+        const nextIndex = Math.min(currentIndex + streamingSpeed, code.length);
+        setDisplayedCode(code.substring(0, nextIndex));
+        currentIndex = nextIndex;
+
         // Auto-scroll to bottom during streaming
         if (editorRef.current) {
-          const lineCount = editorRef.current.getModel()?.getLineCount() || 0
-          editorRef.current.revealLine(lineCount)
+          const lineCount = editorRef.current.getModel()?.getLineCount() || 0;
+          editorRef.current.revealLine(lineCount);
         }
-      }, 50) // Update every 50ms
-      
+      }, 50); // Update every 50ms
+
       return () => {
         if (streamingIntervalRef.current) {
-          clearInterval(streamingIntervalRef.current)
-          streamingIntervalRef.current = null
+          clearInterval(streamingIntervalRef.current);
+          streamingIntervalRef.current = null;
         }
-      }
+      };
     } else if (!isStreaming) {
       // If not streaming, just set the code directly
-      setDisplayedCode(code)
-      setIsStreamingActive(false)
-      setShowTypingCursor(false)
+      setDisplayedCode(code);
+      setIsStreamingActive(false);
+      setShowTypingCursor(false);
     }
-  }, [code, isStreaming, streamingSpeed, displayedCode])
+  }, [code, isStreaming, streamingSpeed, displayedCode]);
 
   // Clean up on unmount
   React.useEffect(() => {
     return () => {
       if (streamingIntervalRef.current) {
-        clearInterval(streamingIntervalRef.current)
+        clearInterval(streamingIntervalRef.current);
       }
-    }
-  }, [])
+    };
+  }, []);
 
   // Add typing cursor effect
-  const displayCodeWithCursor = showTypingCursor && isStreamingActive 
-    ? displayedCode + '█' 
-    : displayedCode
+  const displayCodeWithCursor =
+    showTypingCursor && isStreamingActive ? displayedCode + "█" : displayedCode;
 
-  const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor, monaco: Monaco) => {
-    editorRef.current = editor
+  const handleEditorDidMount = (
+    editor: editor.IStandaloneCodeEditor,
+    monaco: Monaco
+  ) => {
+    editorRef.current = editor;
 
     // Configure Monaco editor
-    monaco.editor.defineTheme('solana-dark', {
-      base: 'vs-dark',
+    monaco.editor.defineTheme("solana-dark", {
+      base: "vs-dark",
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '6A9955' },
-        { token: 'keyword', foreground: 'C586C0' },
-        { token: 'string', foreground: 'CE9178' },
-        { token: 'number', foreground: 'B5CEA8' },
-        { token: 'type', foreground: '4EC9B0' },
-        { token: 'function', foreground: 'DCDCAA' },
+        { token: "comment", foreground: "6A9955" },
+        { token: "keyword", foreground: "C586C0" },
+        { token: "string", foreground: "CE9178" },
+        { token: "number", foreground: "B5CEA8" },
+        { token: "type", foreground: "4EC9B0" },
+        { token: "function", foreground: "DCDCAA" },
       ],
       colors: {
-        'editor.background': '#0d1117',
-        'editor.foreground': '#c9d1d9',
-        'editorLineNumber.foreground': '#6e7681',
-        'editor.selectionBackground': '#264f78',
-        'editor.inactiveSelectionBackground': '#3a3d41',
+        "editor.background": "#0d1117",
+        "editor.foreground": "#c9d1d9",
+        "editorLineNumber.foreground": "#6e7681",
+        "editor.selectionBackground": "#264f78",
+        "editor.inactiveSelectionBackground": "#3a3d41",
       },
-    })
+    });
 
-    monaco.editor.defineTheme('solana-light', {
-      base: 'vs',
+    monaco.editor.defineTheme("solana-light", {
+      base: "vs",
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '008000' },
-        { token: 'keyword', foreground: '0000FF' },
-        { token: 'string', foreground: 'A31515' },
-        { token: 'number', foreground: '098658' },
-        { token: 'type', foreground: '267F99' },
-        { token: 'function', foreground: '795E26' },
+        { token: "comment", foreground: "008000" },
+        { token: "keyword", foreground: "0000FF" },
+        { token: "string", foreground: "A31515" },
+        { token: "number", foreground: "098658" },
+        { token: "type", foreground: "267F99" },
+        { token: "function", foreground: "795E26" },
       ],
       colors: {
-        'editor.background': '#ffffff',
-        'editor.foreground': '#24292e',
-        'editorLineNumber.foreground': '#959da5',
-        'editor.selectionBackground': '#c8c8fa',
-        'editor.inactiveSelectionBackground': '#e1e4e8',
+        "editor.background": "#ffffff",
+        "editor.foreground": "#24292e",
+        "editorLineNumber.foreground": "#959da5",
+        "editor.selectionBackground": "#c8c8fa",
+        "editor.inactiveSelectionBackground": "#e1e4e8",
       },
-    })
-  }
+    });
+  };
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(displayedCode)
+      await navigator.clipboard.writeText(displayedCode);
       // You could add a toast notification here
     } catch (err) {
-      console.error('Failed to copy code:', err)
+      console.error("Failed to copy code:", err);
     }
-  }
+  };
 
   const downloadFile = () => {
-    const blob = new Blob([displayedCode], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename || `code.${getFileExtension(language)}`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
+    const blob = new Blob([displayedCode], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename || `code.${getFileExtension(language)}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const getFileExtension = (lang: string): string => {
     const extensions: { [key: string]: string } = {
-      javascript: 'js',
-      typescript: 'ts',
-      python: 'py',
-      rust: 'rs',
-      go: 'go',
-      java: 'java',
-      cpp: 'cpp',
-      c: 'c',
-      csharp: 'cs',
-      php: 'php',
-      ruby: 'rb',
-      swift: 'swift',
-      kotlin: 'kt',
-      html: 'html',
-      css: 'css',
-      json: 'json',
-      xml: 'xml',
-      yaml: 'yml',
-      markdown: 'md',
-      bash: 'sh',
-      sql: 'sql',
-    }
-    return extensions[lang] || 'txt'
-  }
+      javascript: "js",
+      typescript: "ts",
+      python: "py",
+      rust: "rs",
+      go: "go",
+      java: "java",
+      cpp: "cpp",
+      c: "c",
+      csharp: "cs",
+      php: "php",
+      ruby: "rb",
+      swift: "swift",
+      kotlin: "kt",
+      html: "html",
+      css: "css",
+      json: "json",
+      xml: "xml",
+      yaml: "yml",
+      markdown: "md",
+      bash: "sh",
+      sql: "sql",
+    };
+    return extensions[lang] || "txt";
+  };
 
   const getTheme = () => {
     // Handle system theme
-    if (theme === 'system') {
-      return systemTheme === 'dark' ? 'solana-dark' : 'solana-light'
+    if (theme === "system") {
+      return systemTheme === "dark" ? "solana-dark" : "solana-light";
     }
     // Handle explicit theme
-    return theme === 'dark' ? 'solana-dark' : 'solana-light'
-  }
+    return theme === "dark" ? "solana-dark" : "solana-light";
+  };
 
   return (
-    <Card className={cn('overflow-hidden py-2', className)}>
+    <Card className={cn("overflow-hidden py-2", className)}>
       {showHeader && (
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -247,18 +249,18 @@ export function CodeEditor({
               readOnly: readonly,
               minimap: { enabled: true },
               fontSize: 14,
-              lineNumbers: 'on',
+              lineNumbers: "on",
               roundedSelection: false,
               scrollBeyondLastLine: false,
               automaticLayout: true,
               tabSize: 2,
               insertSpaces: true,
-              wordWrap: 'on',
+              wordWrap: "on",
               contextmenu: true,
               copyWithSyntaxHighlighting: true,
               folding: true,
-              foldingStrategy: 'indentation',
-              showFoldingControls: 'always',
+              foldingStrategy: "indentation",
+              showFoldingControls: "always",
               unfoldOnClickAfterEndOfLine: true,
               bracketPairColorization: {
                 enabled: true,
@@ -276,26 +278,26 @@ export function CodeEditor({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 interface CodeViewerProps {
   codeBlocks: Array<{
-    id: string
-    language: string
-    content: string
-    filename?: string
-  }>
-  className?: string
+    id: string;
+    language: string;
+    content: string;
+    filename?: string;
+  }>;
+  className?: string;
 }
 
 export function CodeViewer({ codeBlocks, className }: CodeViewerProps) {
   if (codeBlocks.length === 0) {
-    return null
+    return null;
   }
 
   return (
-    <div className={cn('space-y-6', className)}>
+    <div className={cn("space-y-6", className)}>
       {codeBlocks.map((block) => (
         <CodeEditor
           key={block.id}
@@ -303,9 +305,12 @@ export function CodeViewer({ codeBlocks, className }: CodeViewerProps) {
           language={block.language}
           filename={block.filename}
           readonly={true}
-          height={Math.min(600, Math.max(200, block.content.split('\n').length * 20))}
+          height={Math.min(
+            600,
+            Math.max(200, block.content.split("\n").length * 20)
+          )}
         />
       ))}
     </div>
-  )
-} 
+  );
+}

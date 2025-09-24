@@ -478,7 +478,6 @@ import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
   import { ReactNode, useMemo } from 'react';
   import { useCluster } from '../cluster/cluster-data-access';
   
-  // Import wallet adapter styles only on client
   if (typeof window !== 'undefined') {
     require('@solana/wallet-adapter-react-ui/styles.css');
   }
@@ -1248,10 +1247,8 @@ export function formatTokenAmount(amount: number | string, decimals = 9, precisi
   const num = typeof amount === "string" ? parseFloat(amount) : amount
   if (isNaN(num)) return "0"
   
-  // Convert from smallest unit to main unit
   const adjusted = num / Math.pow(10, decimals)
   
-  // Format with appropriate precision
   if (adjusted >= 1000000) {
     return (adjusted / 1000000).toFixed(precision) + "M"
   } else if (adjusted >= 1000) {
@@ -1272,7 +1269,6 @@ export function copyToClipboard(text: string) {
     return navigator.clipboard.writeText(text)
   }
   
-  // Fallback for older browsers
   const textArea = document.createElement("textarea")
   textArea.value = text
   document.body.appendChild(textArea)

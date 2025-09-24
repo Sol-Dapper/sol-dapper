@@ -69,27 +69,21 @@ export class AIResponseParser {
       codeBlocks: [],
     };
 
-    // For streaming responses, try to extract partial content
     if (isStreaming) {
       this.parseStreamingContent(response, result);
     } else {
-      // Extract and parse forgeArtifact specifically
       this.parseForgeArtifactDirectly(response, result);
     }
 
-    // Extract code blocks (markdown style) as fallback
     result.codeBlocks.push(...this.extractCodeBlocks(response));
 
-    // Extract plain text (remove XML and code blocks)
     if (isStreaming) {
-      // Use streaming-optimized plain text extraction
       result.text = this.extractPlainTextForStreaming(response);
     } else {
       const xmlBlocks = this.extractXMLBlocks(response);
       result.text = this.extractPlainText(response, xmlBlocks);
     }
 
-    // Also parse as steps for the Builder component
     result.steps = parseForgeXml(response);
 
     return result;
@@ -103,13 +97,9 @@ export class AIResponseParser {
     const aiResult = this.parseResponse(response, false);
     const boilerplateResult = this.parseResponse(boilerplateComponents, false);
     
-    
-    
-    // Start with AI files (these take precedence)
     const mergedFiles: ParsedFile[] = [...aiResult.files];
     const mergedDirectories: ParsedFile[] = [...aiResult.directories];
     
-    // Add boilerplate files ONLY if AI didn't provide them
     boilerplateResult.files.forEach(boilerplateFile => {
       const aiFileExists = aiResult.files.some(aiFile => aiFile.path === boilerplateFile.path);
       if (!aiFileExists) {
@@ -117,7 +107,6 @@ export class AIResponseParser {
       }
     });
     
-    // Add boilerplate directories ONLY if AI didn't provide them
     boilerplateResult.directories.forEach(boilerplateDir => {
       const aiDirExists = aiResult.directories.some(aiDir => aiDir.path === boilerplateDir.path);
       if (!aiDirExists) {
@@ -125,7 +114,6 @@ export class AIResponseParser {
       }
     });
     
-    // Merge other properties (prioritize AI content)
     const mergedResult: ParsedResponse = {
       files: mergedFiles,
       directories: mergedDirectories,
@@ -153,43 +141,32 @@ export class AIResponseParser {
    */
   parseResponseWithExistingFiles(newResponse: string, existingFiles: string, boilerplateComponents?: string): ParsedResponse {
     
-    // Parse the new AI response
     const newResult = this.parseResponse(newResponse, false);
     
-    // Parse existing files
     const existingResult = this.parseResponse(existingFiles, false);
     
     
-    
-    // Start with existing files
     const mergedFiles: ParsedFile[] = [...existingResult.files];
     const mergedDirectories: ParsedFile[] = [...existingResult.directories];
     
-    // Add or update files from new AI response (these take precedence)
     newResult.files.forEach(newFile => {
       const existingFileIndex = mergedFiles.findIndex(existingFile => existingFile.path === newFile.path);
       if (existingFileIndex >= 0) {
-        // Replace existing file with new version
         mergedFiles[existingFileIndex] = newFile;
       } else {
-        // Add new file
         mergedFiles.push(newFile);
       }
     });
     
-    // Add or update directories from new AI response
     newResult.directories.forEach(newDir => {
       const existingDirIndex = mergedDirectories.findIndex(existingDir => existingDir.path === newDir.path);
       if (existingDirIndex >= 0) {
-        // Replace existing directory with new version
         mergedDirectories[existingDirIndex] = newDir;
       } else {
-        // Add new directory
         mergedDirectories.push(newDir);
       }
     });
     
-    // If boilerplate is provided, add missing boilerplate files
     if (boilerplateComponents) {
       const boilerplateResult = this.parseResponse(boilerplateComponents);
       

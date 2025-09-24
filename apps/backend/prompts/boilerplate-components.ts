@@ -1,4 +1,3 @@
-// Additional boilerplate components to extend the base prompt
 export const boilerplateComponents = `<forgeAction type="directory" dirPath="src"></forgeAction>
 <forgeAction type="directory" dirPath="src/components"></forgeAction>
 <forgeAction type="directory" dirPath="src/components/ui"></forgeAction>

@@ -1,10 +1,16 @@
-"use client"
+"use client";
 
-import { useState, useRef, useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { Separator } from "@/components/ui/separator"
+import { useState, useRef, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import {
   History,
   RefreshCw,
@@ -17,29 +23,29 @@ import {
   FolderOpen,
   ArrowRight,
   ChevronRight,
-} from "lucide-react"
-import Link from "next/link"
-import { InlineLoader } from "@/components/ui/loading-spinner"
+} from "lucide-react";
+import Link from "next/link";
+import { InlineLoader } from "@/components/ui/loading-spinner";
 
-type ProjectStatus = "creating" | "generating" | "completed" | "error"
+type ProjectStatus = "creating" | "generating" | "completed" | "error";
 
 interface Project {
-  id: string
-  description: string
-  userId: string
-  createdAt: string
-  updatedAt: string
+  id: string;
+  description: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface ProjectWithStatus extends Project {
-  status?: ProjectStatus
+  status?: ProjectStatus;
 }
 
 interface ProjectsSidebarProps {
-  projects: ProjectWithStatus[]
-  isLoadingProjects: boolean
-  onLoadProjects: () => void
-  topOffset?: number
+  projects: ProjectWithStatus[];
+  isLoadingProjects: boolean;
+  onLoadProjects: () => void;
+  topOffset?: number;
 }
 
 export function ProjectsSidebar({
@@ -48,80 +54,86 @@ export function ProjectsSidebar({
   onLoadProjects,
   topOffset = 0,
 }: ProjectsSidebarProps) {
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
-  const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Memoize project list to prevent scroll position reset on hover state changes
-  const memoizedProjects = useMemo(() => projects, [projects])
+  const memoizedProjects = useMemo(() => projects, [projects]);
 
   const getStatusIcon = (status: ProjectStatus = "completed") => {
     switch (status) {
       case "creating":
-        return <InlineLoader size="sm" className="text-amber-500" />
+        return <InlineLoader size="sm" className="text-amber-500" />;
       case "generating":
-        return <InlineLoader size="sm" className="text-blue-500" />
+        return <InlineLoader size="sm" className="text-blue-500" />;
       case "completed":
-        return <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+        return <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />;
       case "error":
-        return <XCircle className="h-3.5 w-3.5 text-rose-500" />
+        return <XCircle className="h-3.5 w-3.5 text-rose-500" />;
       default:
-        return <CheckCircle className="h-3.5 w-3.5 text-muted-foreground" />
+        return <CheckCircle className="h-3.5 w-3.5 text-muted-foreground" />;
     }
-  }
+  };
 
   const getStatusBadge = (status: ProjectStatus = "completed") => {
     const statusConfig = {
-      creating: { 
-        label: "Creating", 
-        class: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" 
+      creating: {
+        label: "Creating",
+        class:
+          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
       },
-      generating: { 
-        label: "Generating", 
-        class: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" 
+      generating: {
+        label: "Generating",
+        class:
+          "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
       },
-      completed: { 
-        label: "Ready", 
-        class: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
+      completed: {
+        label: "Ready",
+        class:
+          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
       },
-      error: { 
-        label: "Error", 
-        class: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20" 
+      error: {
+        label: "Error",
+        class:
+          "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
       },
-    }
+    };
 
-    const config = statusConfig[status] || statusConfig.completed
+    const config = statusConfig[status] || statusConfig.completed;
 
     return status !== "completed" ? (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${config.class}`}>
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${config.class}`}
+      >
         {getStatusIcon(status)}
         {config.label}
       </span>
-    ) : null
-  }
+    ) : null;
+  };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
     if (diffInHours < 24) {
       if (diffInHours < 1) {
-        return "Just now"
+        return "Just now";
       }
-      const hours = Math.floor(diffInHours)
-      return `${hours}h ago`
-    } else if (diffInHours < 168) { // 7 days
-      const days = Math.floor(diffInHours / 24)
-      return `${days}d ago`
+      const hours = Math.floor(diffInHours);
+      return `${hours}h ago`;
+    } else if (diffInHours < 168) {
+      // 7 days
+      const days = Math.floor(diffInHours / 24);
+      return `${days}d ago`;
     }
-    
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-    })
-  }
+
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+    });
+  };
 
   const SidebarContent = () => (
     <div className="h-full flex flex-col bg-gradient-to-b from-background to-background/95">
@@ -129,7 +141,7 @@ export function ProjectsSidebar({
       <div className="relative p-6 pb-4">
         {/* Decorative gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
-        
+
         <div className="relative">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
@@ -140,9 +152,12 @@ export function ProjectsSidebar({
                 </div>
               </div>
               <div>
-                <h3 className="font-semibold text-base tracking-tight">Recent Projects</h3>
+                <h3 className="font-semibold text-base tracking-tight">
+                  Recent Projects
+                </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {memoizedProjects.length} {memoizedProjects.length === 1 ? 'project' : 'projects'}
+                  {memoizedProjects.length}{" "}
+                  {memoizedProjects.length === 1 ? "project" : "projects"}
                 </p>
               </div>
             </div>
@@ -155,7 +170,9 @@ export function ProjectsSidebar({
             >
               <RefreshCw
                 className={`h-4 w-4 transition-all duration-500 ${
-                  isLoadingProjects ? "animate-spin text-primary" : "hover:rotate-180"
+                  isLoadingProjects
+                    ? "animate-spin text-primary"
+                    : "hover:rotate-180"
                 }`}
               />
             </Button>
@@ -163,7 +180,7 @@ export function ProjectsSidebar({
 
           {/* New Project Button with enhanced styling */}
           <Link href="/">
-            <Button 
+            <Button
               className="w-full group relative overflow-hidden rounded-xl bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5"
               size="sm"
             >
@@ -180,12 +197,12 @@ export function ProjectsSidebar({
 
       {/* Projects List */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <ScrollArea 
-          ref={scrollAreaRef} 
-          className="h-full" 
-          style={{ 
-            scrollBehavior: 'auto',
-            scrollbarGutter: 'stable'
+        <ScrollArea
+          ref={scrollAreaRef}
+          className="h-full"
+          style={{
+            scrollBehavior: "auto",
+            scrollbarGutter: "stable",
           }}
         >
           <div className="p-3 space-y-1.5">
@@ -206,20 +223,22 @@ export function ProjectsSidebar({
                     href={`/p/${project.id}`}
                     className="group relative block"
                   >
-                    <div className="
+                    <div
+                      className="
                       relative flex flex-col gap-1.5 rounded-xl px-3.5 py-3 
                       bg-gradient-to-r from-transparent to-transparent
                       group-hover:from-primary/5 group-hover:to-transparent
                       border border-transparent group-hover:border-primary/10
                       transition-all duration-300 ease-out will-change-transform
                       group-hover:translate-x-1
-                    ">
+                    "
+                    >
                       {/* Project Content */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span 
-                              className="font-medium text-sm text-foreground/90 truncate block max-w-[200px]" 
+                            <span
+                              className="font-medium text-sm text-foreground/90 truncate block max-w-[200px]"
                               title={project.description}
                             >
                               {project.description}
@@ -227,14 +246,16 @@ export function ProjectsSidebar({
                             {getStatusBadge(project.status)}
                           </div>
                         </div>
-                        
+
                         {/* Arrow indicator on hover */}
-                        <ChevronRight className="
+                        <ChevronRight
+                          className="
                           h-4 w-4 text-muted-foreground/50 transition-all duration-300 flex-shrink-0 mt-0.5
                           opacity-0 group-hover:opacity-100 group-hover:translate-x-1
-                        " />
+                        "
+                        />
                       </div>
-                      
+
                       {/* Date and additional info */}
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
@@ -242,10 +263,12 @@ export function ProjectsSidebar({
                       </div>
 
                       {/* Hover effect line */}
-                      <div className="
+                      <div
+                        className="
                         absolute left-0 top-1/2 -translate-y-1/2 h-8 w-0.5 bg-gradient-to-b from-transparent via-primary to-transparent 
                         transition-all duration-300 opacity-0 group-hover:opacity-100
-                      " />
+                      "
+                      />
                     </div>
                   </Link>
                 ))}
@@ -255,7 +278,9 @@ export function ProjectsSidebar({
                     <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted/50 mb-3">
                       <FolderOpen className="h-6 w-6 text-muted-foreground/50" />
                     </div>
-                    <p className="text-sm font-medium text-muted-foreground">No projects yet</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      No projects yet
+                    </p>
                     <p className="text-xs text-muted-foreground/70 mt-1">
                       Create your first project to get started
                     </p>
@@ -272,7 +297,7 @@ export function ProjectsSidebar({
         <div className="absolute bottom-full h-8 w-full bg-gradient-to-t from-background to-transparent pointer-events-none" />
       </div>
     </div>
-  )
+  );
 
   return (
     <>
@@ -298,7 +323,7 @@ export function ProjectsSidebar({
             bg-background/98 backdrop-blur-xl supports-[backdrop-filter]:bg-background/95 
             border-r shadow-2xl shadow-black/5
             z-40 transition-all duration-400 ease-out
-            ${isHovered ? 'translate-x-0' : '-translate-x-full'}
+            ${isHovered ? "translate-x-0" : "-translate-x-full"}
           `}
           style={{ top: topOffset, height: `calc(100vh - ${topOffset}px)` }}
           onMouseEnter={() => setIsHovered(true)}
@@ -337,5 +362,5 @@ export function ProjectsSidebar({
         </Sheet>
       </div>
     </>
-  )
+  );
 }

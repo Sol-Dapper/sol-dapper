@@ -1,4 +1,5 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export async function registerUser(userData: {
   privyUserId: string;
@@ -7,9 +8,9 @@ export async function registerUser(userData: {
 }) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/register`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(userData),
     });
@@ -20,7 +21,7 @@ export async function registerUser(userData: {
 
     return await response.json();
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error("Registration error:", error);
     throw error;
   }
 }

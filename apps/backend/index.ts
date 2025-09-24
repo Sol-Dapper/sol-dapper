@@ -7,7 +7,6 @@ import { SYSTEM_PROMPT, BASE_PROMPT_REACT } from "./prompts/prompt";
 import { boilerplateComponents } from "./prompts/boilerplate-components";
 import { generateText, streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
-// import { anthropic } from "@ai-sdk/anthropic";
 import Anthropic from '@anthropic-ai/sdk';
 
 const PORT = process.env.PORT || 3001;
@@ -15,9 +14,6 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY 
 });
 
-/**
- * Analyze AI response to extract useful metrics for debugging and monitoring
- */
 function analyzeAIResponse(response: string): {
   hasForgeArtifact: boolean;
   hasForgeActions: boolean;
@@ -29,15 +25,12 @@ function analyzeAIResponse(response: string): {
   const hasForgeArtifact = response.includes('<forgeArtifact') || response.includes('&lt;forgeArtifact');
   const hasForgeActions = response.includes('<forgeAction') || response.includes('&lt;forgeAction');
   
-  // Count potential files by counting forgeAction with type="file"
   const fileMatches = response.match(/<forgeAction[^>]*type=["']file["'][^>]*>/g) || [];
   const estimatedFileCount = fileMatches.length;
   
-  // Count potential shell commands
   const shellMatches = response.match(/<forgeAction[^>]*type=["'](shell|command)["'][^>]*>/g) || [];
   const estimatedShellCommands = shellMatches.length;
   
-  // Determine response type
   let responseType = 'text';
   if (hasForgeArtifact) {
     responseType = 'forge_artifact';
@@ -47,7 +40,6 @@ function analyzeAIResponse(response: string): {
     responseType = 'bolt_artifact';
   }
   
-  // Basic XML validation
   const hasValidXML = hasForgeArtifact ? response.includes('</forgeArtifact>') || response.includes('&lt;/forgeArtifact&gt;') : true;
   
   return {
@@ -63,12 +55,11 @@ function analyzeAIResponse(response: string): {
 const app = express();
 
 app.use((req, res, next) => {
-  req.setTimeout(0); // Disable timeout
-  res.setTimeout(1200000); // 20 minute timeout
+  req.setTimeout(0);
+  res.setTimeout(1200000);
   next();
 });
 
-// Configure CORS for streaming and cross-origin requests
 app.use(cors({
   origin: "*",
   credentials: true,
@@ -120,7 +111,6 @@ app.post("/api/project", authMiddleware, async (req, res) => {
   const privyUserId = req.privyUserId!;
 
   try {
-    // Generate concise description using ChatGPT 4o
     const summaryResponse = await generateText({
       model: openai('gpt-4o'),
       messages: [
@@ -139,14 +129,12 @@ app.post("/api/project", authMiddleware, async (req, res) => {
 
     let description = summaryResponse.text;
 
-    // Clean up the description and ensure it's under 5 words
     description = description.trim().replace(/['"]/g, '');
     const words = description.split(' ').filter(word => word.length > 0);
     if (words.length > 4) {
       description = words.slice(0, 4).join(' ');
     }
 
-    // Fallback if description is empty or too short
     if (!description || description.length < 3) {
       description = prompt.split('\n')[0].substring(0, 30).trim() || 'Solana App';
     }
@@ -166,7 +154,6 @@ app.post("/api/project", authMiddleware, async (req, res) => {
     res.json({ project: project.id });
   } catch (error) {
     console.error('Error generating project description:', error);
-    // Fallback to original method if API fails
     const description = prompt.split("\n")[0].substring(0, 30).trim() || 'Solana App';
     
     const user = await prismaClient.user.findUnique({
@@ -236,7 +223,6 @@ app.get("/api/project/:id", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: "Project not found or access denied" });
     }
 
-    // Add analysis of project structure for debugging
     const systemPrompts = project.prompts.filter(p => p.type === 'SYSTEM');
     const userPrompts = project.prompts.filter(p => p.type === 'USER');
     const projectAnalysis = {
@@ -265,17 +251,14 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
   const requestId = `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   try {
-    // Validate inputs
     if (!userPrompt || !projectId) {
       return res.status(400).json({ error: "Missing prompt or projectId" });
     }
 
-    // Validate prompt length
     if (userPrompt.length > 50000) {
       return res.status(400).json({ error: "Prompt too long" });
     }
 
-    // Get user
     let user;
     try {
       user = await prismaClient.user.findUnique({
@@ -289,7 +272,6 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Get project and verify ownership
     let project;
     try {
       project = await prismaClient.project.findFirst({
@@ -311,7 +293,6 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: "Project not found or access denied" });
     }
 
-    // Build conversation history from previous prompts
     let conversationHistory;
     try {
       conversationHistory = project.prompts.map((p) => ({
@@ -322,11 +303,9 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
       return res.status(500).json({ error: "Error processing conversation history" });
     }
 
-    // Prepare messages array for Anthropic API
     let messages;
     let systemContent;
     try {
-      // Combine system prompts into one
       systemContent = [
         SYSTEM_PROMPT(),
         basePrompt,
@@ -341,7 +320,6 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
       return res.status(500).json({ error: "Error preparing conversation messages" });
     }
 
-    // Save user prompt to database before streaming
     try {
       await prismaClient.prompt.create({
         data: {
@@ -354,7 +332,6 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
       return res.status(500).json({ error: "Database error saving prompt" });
     }
 
-    // Set CORS headers for streaming
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -362,16 +339,12 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    // Initialize Anthropic client (make sure this is imported at the top of your file)
-    // import Anthropic from '@anthropic-ai/sdk';
-    // const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     let fullResponse = '';
     let inputTokens = 0;
     let outputTokens = 0;
 
     try {
-      // Create streaming request to Anthropic
       const stream = await anthropic.messages.create({
         model: model,
         max_tokens: 64000,
@@ -381,7 +354,6 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
         stream: true,
       });
 
-      // Handle the stream
       for await (const chunk of stream) {
         try {
           if (chunk.type === 'message_start') {
@@ -392,45 +364,37 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
               const textChunk = chunk.delta.text;
               fullResponse += textChunk;
               
-              // Write chunk to response stream
               res.write(textChunk);
             }
           }
           else if (chunk.type === 'content_block_start') {
-            // Content block started
           }
           else if (chunk.type === 'content_block_stop') {
-            // Content block stopped
           }
           else if (chunk.type === 'message_delta') {
             if (chunk.usage) {
               outputTokens = chunk.usage.output_tokens || 0;
             }
             if (chunk.delta?.stop_reason) {
-              // Stream finished
             }
           }
           else if (chunk.type === 'message_stop') {
             break;
           }
         } catch (chunkError) {
-          continue; // Continue processing other chunks
+          continue;
         }
       }
 
-      // End the response stream
       res.end();
 
-      // Analyze the response if needed
       if (typeof analyzeAIResponse === 'function') {
         try {
           const responseAnalysis = analyzeAIResponse(fullResponse);
         } catch (analysisError) {
-          // Error analyzing response
         }
       }
 
-      // Save AI response to database
       if (fullResponse.trim()) {
         try {
           await prismaClient.prompt.create({
@@ -441,26 +405,21 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
             },
           });
         } catch (dbError) {
-          // Don't throw here as the stream was successful
         }
       }
 
     } catch (streamError) {
-      // Only send error response if headers haven't been sent yet
       if (!res.headersSent) {
         res.status(500).json({ error: "Failed to stream response from Anthropic" });
       } else {
-        // If streaming already started, end the response
         res.end();
       }
     }
 
   } catch (error) {
-    // Only send error response if headers haven't been sent yet
     if (!res.headersSent) {
       res.status(500).json({ error: "Failed to generate response" });
     } else {
-      // If streaming already started, end the response
       res.end();
     }
   }
@@ -476,7 +435,6 @@ app.get("/api/boilerplate", async (req, res) => {
   }
 });
 
-// Test path stripping endpoint
 app.get("/api/debug/path-strip-test", async (req, res) => {
   try {
     const testPaths = [
@@ -489,7 +447,6 @@ app.get("/api/debug/path-strip-test", async (req, res) => {
       'solana-nft-dapp/anchor/programs/nft/lib.rs'
     ];
     
-    // Simple path stripping logic (mimics the XML parser)
     const stripTopLevelFolder = (filePath: string): string => {
       const cleanPath = filePath.replace(/^\/+/, '');
       const parts = cleanPath.split('/');
@@ -518,14 +475,11 @@ app.get("/api/debug/path-strip-test", async (req, res) => {
   }
 });
 
-// Test parsing endpoint - mimics what frontend does
 app.get("/api/debug/parse-test", async (req, res) => {
   try {
-    // Simulate an empty AI response with boilerplate
     const emptyResponse = "";
     const testResponse = "Create a simple hello world component";
     
-    // Import the parser (simplified version)
     const parseXML = (content: string) => {
       const fileMatches = content.match(/<forgeAction[^>]*type=["']file["'][^>]*filePath=["']([^"']+)["'][^>]*>([\s\S]*?)<\/forgeAction>/gi) || [];
       const dirMatches = content.match(/<forgeAction[^>]*type=["']directory["'][^>]*dirPath=["']([^"']+)["'][^>]*>/gi) || [];
@@ -580,10 +534,8 @@ app.get("/api/debug/parse-test", async (req, res) => {
   }
 });
 
-// Debug endpoint to test boilerplate parsing
 app.get("/api/debug/boilerplate", async (req, res) => {
   try {
-    // Count UI components in boilerplate
     const uiComponentCount = (boilerplateComponents.match(/src\/components\/ui\//g) || []).length;
     const fileCount = (boilerplateComponents.match(/<forgeAction[^>]*type=["']file["']/g) || []).length;
     const dirCount = (boilerplateComponents.match(/<forgeAction[^>]*type=["']directory["']/g) || []).length;
@@ -611,18 +563,14 @@ app.get("/api/debug/boilerplate", async (req, res) => {
   }
 });
 
-// Add missing UI components to existing projects
 app.post("/api/admin/add-ui-components", async (req, res) => {
   try {
     
-    // Get all projects that might be missing UI components
     const projects = await prismaClient.project.findMany();
     let updatedCount = 0;
 
     for (const project of projects) {
       
-      // For now, we'll just update the project to trigger the boilerplate merge
-      // This is a simple approach - in a real scenario you'd check if UI components exist
       await prismaClient.project.update({
         where: { id: project.id },
         data: { updatedAt: new Date() }
@@ -642,7 +590,6 @@ app.post("/api/admin/add-ui-components", async (req, res) => {
   }
 });
 
-// Home route
 app.get('/', (req, res) => {
   res.json({
     name: "Sol Dapper API",
@@ -659,7 +606,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// Start server (for both development and Render.com deployment)
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
