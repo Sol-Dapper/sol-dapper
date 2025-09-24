@@ -34,7 +34,6 @@
         "cors": "^2.8.5",
         "express": "^4.21.2",
         "jose": "^5.2.0",
-        "zod": "^4.1.11",
       },
       "devDependencies": {
         "@types/cors": "^2.8.19",
@@ -42,6 +41,7 @@
         "@types/jsonwebtoken": "^9.0.10",
         "@types/node": "^20.19.13",
         "prisma": "^6.15.0",
+        "typescript": "^5.8.2",
       },
     },
     "apps/web": {

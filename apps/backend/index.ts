@@ -645,37 +645,24 @@ app.post("/api/admin/add-ui-components", async (req, res) => {
   }
 });
 
-
+// Home route
 app.get('/', (req, res) => {
-  res.type('html').send(`
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8"/>
-        <title>Sol Dapper API</title>
-        <link rel="stylesheet" href="/style.css" />
-      </head>
-      <body>
-        <nav>
-          <a href="/">Home</a>
-          <a href="/about">About</a>
-          <a href="/api-data">API Data</a>
-          <a href="/healthz">Health</a>
-        </nav>
-        <h1>Sol Dapper API ⚡</h1>
-        <p>AI-powered Solana development platform backend API.</p>
-        <p>Use this API to interact with Sol Dapper's AI code generation and project management features.</p>
-      </body>
-    </html>
-  `)
-})
-
-// For local development
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  res.json({
+    name: "Sol Dapper API",
+    version: "1.0.0",
+    description: "AI-powered Solana development platform backend API",
+    status: "running",
+    endpoints: [
+      "POST /api/register - Register/login user",
+      "POST /api/project - Create new project",
+      "POST /api/chat - Chat with AI",
+      "GET /api/project/:id - Get project details",
+      "PUT /api/project/:id/state - Update project state"
+    ]
   });
-}
+});
 
-// Export the Express app for Vercel
-export default app;
+// Start server (for both development and Render.com deployment)
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

@@ -1,13 +1,13 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "type":"module",
+  "type": "module",
   "scripts": {
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
-    "build": "bun run db:generate && bun build index.ts --outdir dist --target bun",
-    "start": "bun dist/index.js",
-    "dev": "bun index.ts"
+    "build": "bun run db:generate && bun build index.ts --outdir public --target bun",
+    "start": "bun public/index.js",
+    "dev": "bun --watch index.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.17",
@@ -16,14 +16,14 @@
     "ai": "^5.0.44",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "jose": "^5.2.0",
-    "zod": "^4.1.11"
+    "jose": "^5.2.0"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
     "@types/express": "^4.17.23",
+    "@types/cors": "^2.8.19",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.13",
+    "typescript": "^5.8.2",
     "prisma": "^6.15.0"
   },
   "engines": {

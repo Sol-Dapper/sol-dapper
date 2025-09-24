@@ -1,9 +1,9 @@
 {
   "version": 2,
   "name": "my-backend",
-  "buildCommand": "pnpm run build",
-  "devCommand": "pnpm run dev",
-  "installCommand": "pnpm install",
+  "buildCommand": "cp -r ../../packages ./packages && bun install && bun run build",
+  "devCommand": "bun run dev",
+  "installCommand": "bun install",
   "framework": null,
   "routes": [
     {
