@@ -5,7 +5,7 @@ import cors from "cors";
 import { basePrompt } from "./prompts/baseprompt";
 import { SYSTEM_PROMPT, BASE_PROMPT_REACT } from "./prompts/prompt";
 import { boilerplateComponents } from "./prompts/boilerplate-components";
-import { streamText } from "ai";
+import { generateText, streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { anthropic } from "@ai-sdk/anthropic";
 
@@ -116,20 +116,70 @@ app.post("/api/project", authMiddleware, async (req, res) => {
   const { prompt } = req.body;
   const privyUserId = req.privyUserId!;
 
-  const description = prompt.split("\n")[0];
-  const user = await prismaClient.user.findUnique({
-    where: { privyUserId },
-  });
+  try {
+    // Generate concise description using ChatGPT 4o
+    const summaryResponse = await generateText({
+      model: openai('gpt-4o'),
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a project description generator. Create a concise description (maximum 4 words) that captures the essence of the user\'s Solana app idea. Return only the description, no additional text.'
+        },
+        {
+          role: 'user',
+          content: `Summarize this Solana app idea in 4 words or less: "${prompt}"`
+        }
+      ],
+      maxOutputTokens: 20,
+      temperature: 0.3,
+    });
 
-  if (!user) {
-    return res.status(404).json({ error: "User not found" });
+    let description = summaryResponse.text;
+
+    // Clean up the description and ensure it's under 5 words
+    description = description.trim().replace(/['"]/g, '');
+    const words = description.split(' ').filter(word => word.length > 0);
+    if (words.length > 4) {
+      description = words.slice(0, 4).join(' ');
+    }
+
+    // Fallback if description is empty or too short
+    if (!description || description.length < 3) {
+      description = prompt.split('\n')[0].substring(0, 30).trim() || 'Solana App';
+    }
+
+    const user = await prismaClient.user.findUnique({
+      where: { privyUserId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const project = await prismaClient.project.create({
+      data: { description, userId: user.id },
+    });
+
+    res.json({ project: project.id });
+  } catch (error) {
+    console.error('Error generating project description:', error);
+    // Fallback to original method if API fails
+    const description = prompt.split("\n")[0].substring(0, 30).trim() || 'Solana App';
+    
+    const user = await prismaClient.user.findUnique({
+      where: { privyUserId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const project = await prismaClient.project.create({
+      data: { description, userId: user.id },
+    });
+
+    res.json({ project: project.id });
   }
-
-  const project = await prismaClient.project.create({
-    data: { description, userId: user.id },
-  });
-
-  res.json({ project: project.id });
 });
 
 app.get("/api/projects", authMiddleware, async (req, res) => {

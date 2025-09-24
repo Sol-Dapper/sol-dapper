@@ -23,7 +23,7 @@ export function LoginForm({
       <Card className="border border-border/60 shadow-lg bg-card/80 backdrop-blur-md">
         <CardHeader className="text-center space-y-4">
           <div
-            className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-muted/30 border border-border/60 shadow-sm mx-auto overflow-hidden"
+            className="inline-flex items-center justify-center w-20 h-20 mx-auto"
             aria-hidden="true"
           >
             <Image 
@@ -31,7 +31,7 @@ export function LoginForm({
               alt="Sol-Dapper Logo" 
               width={80} 
               height={80} 
-              className="object-cover rounded-2xl" 
+              className="object-cover" 
             />
           </div>
           <div className="space-y-2">
@@ -54,7 +54,7 @@ export function LoginForm({
                 alt="Sol-Dapper" 
                 width={20} 
                 height={20} 
-                className="mr-2 rounded-sm object-cover" 
+                className="mr-2 object-cover" 
                 aria-hidden="true" 
               />
               Sign in with Privy

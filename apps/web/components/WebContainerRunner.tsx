@@ -308,13 +308,13 @@ export function WebContainerRunner({ files, isVisible, shouldUpdateFiles = false
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-purple-100 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 flex items-center justify-center overflow-hidden">
+              <div className="h-8 w-8 flex items-center justify-center">
                 <Image 
                   src="/dapperGithub.jpg" 
                   alt="Sol-Dapper" 
                   width={32} 
                   height={32} 
-                  className="object-cover rounded-lg" 
+                  className="object-cover" 
                 />
               </div>
               <div>

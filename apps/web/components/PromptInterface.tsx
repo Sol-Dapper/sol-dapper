@@ -221,13 +221,13 @@ export function PromptInterface(): JSX.Element {
             <Card className="h-full border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-6">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 overflow-hidden">
+                  <div className="flex h-12 w-12 items-center justify-center">
                     <Image 
                       src="/dapperGithub.jpg" 
                       alt="Sol-Dapper" 
                       width={48} 
                       height={48} 
-                      className="object-cover rounded-2xl" 
+                      className="object-cover" 
                     />
                   </div>
                   <div>
@@ -318,13 +318,13 @@ export function PromptInterface(): JSX.Element {
             <Card className="flex min-h-0 flex-1 flex-col border border-border/50 shadow-lg bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-6">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 overflow-hidden">
+                  <div className="flex h-12 w-12 items-center justify-center">
                     <Image 
                       src="/dapperGithub.jpg" 
                       alt="Sol-Dapper" 
                       width={48} 
                       height={48} 
-                      className="object-cover rounded-2xl" 
+                      className="object-cover" 
                     />
                   </div>
                   <div>
@@ -349,13 +349,13 @@ export function PromptInterface(): JSX.Element {
                     ) : (
                       <div className="flex h-[350px] items-center justify-center">
                         <div className="text-center space-y-6">
-                          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-muted/30 border border-border/30 mx-auto overflow-hidden">
+                          <div className="flex h-20 w-20 items-center justify-center mx-auto">
                             <Image 
                               src="/dapperGithub.jpg" 
                               alt="Sol-Dapper" 
                               width={80} 
                               height={80} 
-                              className="object-cover rounded-3xl opacity-60" 
+                              className="object-cover opacity-60" 
                             />
                           </div>
                           <div className="space-y-3">

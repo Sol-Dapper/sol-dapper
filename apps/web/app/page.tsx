@@ -1,7 +1,6 @@
 "use client"
 
 import { usePrivy } from "@privy-io/react-auth"
-import { Button } from "../components/ui/button"
 import { Card } from "../components/ui/card"
 import { Navigation } from "../components/navigation"
 import { ProjectsSidebar } from "../components/ProjectsSidebar"
@@ -194,13 +193,13 @@ export default function Home(): JSX.Element {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-8">
         <div className="w-full max-w-lg mx-auto text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-primary/5 border border-primary/10 mb-8 overflow-hidden">
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-8">
             <Image 
               src="/dapperGithub.jpg" 
               alt="Sol-Dapper Logo" 
               width={80} 
               height={80} 
-              className="object-cover rounded-3xl" 
+              className="object-cover" 
             />
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-3">Setting Up Your Account</h1>
@@ -250,13 +249,13 @@ export default function Home(): JSX.Element {
         <main className="flex-1 flex flex-col items-center justify-center p-12">
           <div className="w-full max-w-4xl mx-auto">
             <div className="text-center mb-12">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-primary/10 border border-primary/20 mb-6 backdrop-blur-sm overflow-hidden">
+              <div className="inline-flex items-center justify-center w-16 h-16 mb-6">
                 <Image 
                   src="/dapperGithub.jpg" 
                   alt="Sol-Dapper Logo" 
                   width={64} 
                   height={64} 
-                  className="object-cover rounded-3xl" 
+                  className="object-cover" 
                 />
               </div>
               <h1 className="text-3xl font-bold text-foreground mb-4 drop-shadow-sm">Create Your Solana App</h1>

@@ -76,14 +76,14 @@ export function Navigation({ user, onLogout }: NavigationProps) {
       <div className="mx-auto flex h-16 w-full items-center justify-between px-12">
         {/* Logo */}
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 overflow-hidden">
+          <Link href="/" className="flex items-center ">
+            <div className="flex h-10 w-10 items-center justify-center">
               <Image 
                 src="/dapperGithub.jpg" 
                 alt="Sol-Dapper Logo" 
                 width={40} 
                 height={40} 
-                className="object-cover rounded-2xl" 
+                className="object-cover" 
               />
             </div>
             <h1 className="text-2xl font-bold text-foreground">Sol-Dapper</h1>

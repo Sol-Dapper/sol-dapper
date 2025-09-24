@@ -62,7 +62,7 @@ export function LoadingSpinner({
           />
           {showIcon && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className={cn("rounded-full overflow-hidden",
+              <div className={cn("",
                 size === "sm" ? "h-2 w-2" :
                 size === "md" ? "h-3 w-3" : 
                 size === "lg" ? "h-4 w-4" : "h-6 w-6"
@@ -72,7 +72,7 @@ export function LoadingSpinner({
                   alt="Sol-Dapper" 
                   width={size === "sm" ? 8 : size === "md" ? 12 : size === "lg" ? 16 : 24}
                   height={size === "sm" ? 8 : size === "md" ? 12 : size === "lg" ? 16 : 24}
-                  className="object-cover rounded-full" 
+                  className="object-cover" 
                 />
               </div>
             </div>
@@ -113,13 +113,13 @@ export function PageLoader({ text = "Loading..." }: { text?: string }) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-8">
       <div className="w-full max-w-lg mx-auto text-center">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-primary/5 border border-primary/10 mb-8 overflow-hidden">
+        <div className="inline-flex items-center justify-center w-20 h-20 mb-8">
           <Image 
             src="/dapperGithub.jpg" 
             alt="Sol-Dapper Logo" 
             width={80} 
             height={80} 
-            className="object-cover rounded-3xl" 
+            className="object-cover" 
           />
         </div>
         <h1 className="text-3xl font-bold text-foreground mb-3">Sol-Dapper</h1>
