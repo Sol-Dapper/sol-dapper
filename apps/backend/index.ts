@@ -73,6 +73,14 @@ app.use(cors({
   exposedHeaders: ['Content-Length', 'Content-Type']
 }));
 
+app.options("/api/chat", cors({
+  origin: "https://dapper-web.vercel.app",
+  credentials: true,
+  methods: ['POST','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization','Accept','Origin','X-Requested-With']
+}));
+
+
 app.use(express.json());
 
 app.post("/api/register", async (req, res) => {
@@ -344,10 +352,13 @@ app.post("/api/chat", authMiddleware, async (req, res) => {
 
     // Set streaming headers
     try {
+      res.setHeader("Access-Control-Allow-Origin", "https://dapper-web.vercel.app");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.setHeader("Transfer-Encoding", "chunked");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
+      
     } catch (headerError) {
       return res.status(500).json({ error: "Error setting response headers" });
     }
