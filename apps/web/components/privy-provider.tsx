@@ -14,6 +14,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       appId={appId}
       clientId={clientId}
       config={{
+        loginMethods: ["wallet"],
         embeddedWallets: {
           solana: {
             createOnLogin: "users-without-wallets",
